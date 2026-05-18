@@ -238,7 +238,7 @@ public class TasksController : ControllerBase
     /// <summary>
     ///     Обновить задание (черновики) с возможностью выполнения решения
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPost("{id}")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskRequest request)
     {

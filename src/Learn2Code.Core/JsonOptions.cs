@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Learn2Code.Core.DTOs;
 using Learn2Code.Core.Models;
 
 namespace Learn2Code.Core;
@@ -12,7 +13,7 @@ public static class JsonOptions
 {
     /// <summary>
     /// Universal JsonSerializerOptions with camelCase naming, case-insensitive property matching,
-    /// enum string conversion, and polymorphic serialization via JsonDerivedType attributes.
+    /// enum string conversion, and polymorphic serialization via custom converters.
     /// Used everywhere: API controllers, EF Core JSON columns, tests, and other serialization.
     /// </summary>
     public static readonly JsonSerializerOptions Default = new()
@@ -24,7 +25,8 @@ public static class JsonOptions
         Converters =
         {
             new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
-            new SpriteStateJsonConverter()
+            new SpriteStateJsonConverter(),
+            new SpriteStateDtoJsonConverter()
         }
     };
 }

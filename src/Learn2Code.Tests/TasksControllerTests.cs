@@ -2,8 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Learn2Code.Core.DTOs;
 using Learn2Code.Core.Entities;
-using Learn2Code.Core.Enums;
-using Learn2Code.Core.Models;
 
 namespace Learn2Code.Tests;
 
@@ -88,13 +86,6 @@ public class TasksControllerTests : TestBase
             
             var taskResponse = await Client.PostAsJsonAsync("/api/tasks/draft", createTaskRequest);
             
-            if (!taskResponse.IsSuccessStatusCode)
-            {
-                var errorContent = await taskResponse.Content.ReadAsStringAsync();
-                Console.WriteLine($"Error creating task: {taskResponse.StatusCode}");
-                Console.WriteLine($"Error content: {errorContent}");
-            }
-            
             Assert.That(taskResponse.IsSuccessStatusCode, Is.True);
             var task = await taskResponse.Content.ReadFromJsonAsync<TaskDto>(JsonOptions);
             return task!.Id;
@@ -143,11 +134,13 @@ public class TasksControllerTests : TestBase
                 "move(5)"
             );
             
-            var updateResponse = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+            var updateResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+            
             Assert.That(updateResponse.IsSuccessStatusCode, Is.True, "Не удалось обновить задание с решением");
 
             // Публикуем задание
             var publishResponse = await Client.PostAsync($"/api/tasks/{taskId}/publish", null);
+            
             Assert.That(publishResponse.IsSuccessStatusCode, Is.True, "Не удалось опубликовать задание");
         }
         finally
@@ -280,7 +273,7 @@ public class TasksControllerTests : TestBase
             null,
             null);
 
-        var response = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
         var getResponse = await Client.GetAsync($"/api/tasks/{taskId}");
@@ -350,7 +343,7 @@ public class TasksControllerTests : TestBase
         var taskId = await CreateTestTaskAsync(lessonId);
 
         var updateRequest = new UpdateTaskRequest("Admin Updated", null, null, null, null, null);
-        var response = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
 
@@ -415,7 +408,7 @@ public class TasksControllerTests : TestBase
         SetBearerToken(student.Token);
 
         var updateRequest = new UpdateTaskRequest("Student Updated", null, null, null, null, null);
-        var response = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
     }
 
@@ -465,7 +458,7 @@ public class TasksControllerTests : TestBase
             new SceneStateDto(new CatStateDto { GridX = 0, GridY = 0, Direction = 90.0, Visible = true, Costume = "default" }),
             "move(5)" // Solution code
         );
-        var updateResponse = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        var updateResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest, JsonOptions);
         Assert.That(updateResponse.IsSuccessStatusCode, Is.True, "Не удалось обновить задание с решением");
 
         // Публикуем задание
@@ -539,17 +532,17 @@ public class TasksControllerTests : TestBase
 
         // Test invalid order (zero)
         var updateRequest = new UpdateTaskRequest(null, null, 0, null, null, null);
-        var response = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         
         // Test negative order
         updateRequest = new UpdateTaskRequest(null, null, -5, null, null, null);
-        response = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         
         // Test valid order should succeed
         updateRequest = new UpdateTaskRequest(null, null, 10, null, null, null);
-        response = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
 
@@ -787,7 +780,7 @@ public class TasksControllerTests : TestBase
             new SceneStateDto(new CatStateDto { GridX = 0, GridY = 0, Direction = 90.0, Visible = true, Costume = "default" }),
             "move(5)" // Solution code
         );
-        var updateResponse = await Client.PutAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
+        var updateResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(updateResponse.IsSuccessStatusCode, Is.True, "Failed to update task with solution");
 
         // Publish the task
@@ -848,7 +841,7 @@ public class TasksControllerTests : TestBase
         
         // Teacher 2 should not be able to update Teacher 1's task
         var updateRequest = new UpdateTaskRequest("Updated Title", "Updated description", 2, null, null, null);
-        var response = await Client.PutAsJsonAsync($"/api/tasks/{taskId1}", updateRequest);
+        var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId1}", updateRequest);
         
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound),
             "Teacher should get 404 when trying to update task from other teacher's course");
@@ -929,5 +922,76 @@ public class TasksControllerTests : TestBase
         // Student should get 404 for task in inaccessible course
         var response = await Client.GetAsync($"/api/tasks/{taskId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
+    public async Task TestSolution_WithJsonPayload_DeserializesCorrectly()
+    {
+        // Create teacher and task
+        var teacher = await GetTeacherAsync();
+        SetBearerToken(teacher.Token);
+        var courseId = await CreateTestCourseAsync();
+        var lessonId = await CreateTestLessonAsync(courseId);
+        var taskId = await CreateTestTaskAsync(lessonId);
+
+        // Create JSON payload with polymorphic sprites
+        var jsonPayload = @"{
+            ""code"": ""move(10)"",
+            ""initialState"": {
+                ""sprites"": [
+                    {
+                        ""type"": ""cat"",
+                        ""gridX"": 0,
+                        ""gridY"": 0,
+                        ""visible"": true,
+                        ""direction"": 90.0,
+                        ""costume"": ""default"",
+                        ""saidTexts"": {},
+                        ""collectedItems"": {}
+                    },
+                    {
+                        ""type"": ""apple"",
+                        ""gridX"": 5,
+                        ""gridY"": 5,
+                        ""visible"": true
+                    },
+                    {
+                        ""type"": ""wall"",
+                        ""gridX"": 10,
+                        ""gridY"": 10,
+                        ""visible"": true
+                    }
+                ]
+            },
+            ""config"": {
+                ""gridWidth"": 20,
+                ""gridHeight"": 20
+            }
+        }";
+
+        // Send raw JSON to test deserialization
+        var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
+        var response = await Client.PostAsync($"/api/tasks/{taskId}/test-solution", content);
+        
+        // Output response for debugging
+        var responseContent = await response.Content.ReadAsStringAsync();
+        
+        // Check that request was processed (might return 400 if sandbox not available, but not 500 with deserialization error)
+        Assert.That(response.StatusCode, Is.Not.EqualTo(HttpStatusCode.InternalServerError),
+            $"Should not get internal server error due to deserialization. Response: {responseContent}");
+        
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            var result = await response.Content.ReadFromJsonAsync<TestSolutionResponse>(JsonOptions);
+            Assert.That(result, Is.Not.Null);
+        }
+        else
+        {
+            // If not OK, check error message doesn't contain deserialization error
+            Assert.That(responseContent, Does.Not.Contain("Deserialization of types without a parameterless constructor"),
+                "Should not have deserialization error");
+            Assert.That(responseContent, Does.Not.Contain("SpriteStateDto"),
+                "Should not have SpriteStateDto deserialization error");
+        }
     }
 }

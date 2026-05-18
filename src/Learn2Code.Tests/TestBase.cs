@@ -108,31 +108,19 @@ public abstract class TestBase : IDisposable
         using (var scope = Factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            
-            try
-            {
-                // Clear all tables in correct order of dependencies
-                // Start with most dependent tables
-                dbContext.Submissions.RemoveRange(dbContext.Submissions);
-                dbContext.Progress.RemoveRange(dbContext.Progress);
-                dbContext.GroupStudents.RemoveRange(dbContext.GroupStudents);
-                dbContext.Tasks.RemoveRange(dbContext.Tasks);
-                dbContext.Lessons.RemoveRange(dbContext.Lessons);
-                dbContext.Groups.RemoveRange(dbContext.Groups);
-                dbContext.Courses.RemoveRange(dbContext.Courses);
-                dbContext.Users.RemoveRange(dbContext.Users);
+
+            // Clear all tables in correct order of dependencies
+            // Start with most dependent tables
+            dbContext.Submissions.RemoveRange(dbContext.Submissions);
+            dbContext.Progress.RemoveRange(dbContext.Progress);
+            dbContext.GroupStudents.RemoveRange(dbContext.GroupStudents);
+            dbContext.Tasks.RemoveRange(dbContext.Tasks);
+            dbContext.Lessons.RemoveRange(dbContext.Lessons);
+            dbContext.Groups.RemoveRange(dbContext.Groups);
+            dbContext.Courses.RemoveRange(dbContext.Courses);
+            dbContext.Users.RemoveRange(dbContext.Users);
                 
-                await dbContext.SaveChangesAsync();
-                
-                // Debug: log counts after cleanup
-                Console.WriteLine($"DEBUG: After cleanup - Courses: {dbContext.Courses.Count()}, Users: {dbContext.Users.Count()}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ERROR during test cleanup: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                throw;
-            }
+            await dbContext.SaveChangesAsync();
         }
     }
 
@@ -157,14 +145,7 @@ public abstract class TestBase : IDisposable
         var loginRequest = new LoginRequest("admin", "admin123");
         var response = await Client.PostAsJsonAsync("/api/auth/login", loginRequest);
         
-        // Debug: check login response
-        if (!response.IsSuccessStatusCode)
-        {
-            var content = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"DEBUG: Admin login failed with status: {response.StatusCode}");
-            Console.WriteLine($"DEBUG: Login response content: {content}");
-            response.EnsureSuccessStatusCode();
-        }
+        response.EnsureSuccessStatusCode();
         
         var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
         var token = loginResponse?.Token ?? throw new InvalidOperationException("Token not found");
@@ -176,15 +157,9 @@ public abstract class TestBase : IDisposable
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var dbAdmin = await dbContext.Users.FindAsync(adminId);
-            Console.WriteLine($"DEBUG: Admin user from DB: {dbAdmin != null} (ID: {adminId})");
             if (dbAdmin == null)
             {
-                Console.WriteLine("DEBUG: Admin user not found in database! Listing all users:");
-                var allUsers = await dbContext.Users.ToListAsync();
-                foreach (var user in allUsers)
-                {
-                    Console.WriteLine($"  - {user.Login} ({user.Id})");
-                }
+                // Admin should exist, but we'll let the test fail naturally
             }
         }
 
@@ -251,11 +226,8 @@ public abstract class TestBase : IDisposable
         
         if (existingAdmin != null)
         {
-            Console.WriteLine($"DEBUG: Admin user already exists with ID: {existingAdmin.Id}");
             return;
         }
-
-        Console.WriteLine("DEBUG: Creating admin user...");
         
         // Create admin user
         var admin = new User
@@ -270,13 +242,6 @@ public abstract class TestBase : IDisposable
 
         dbContext.Users.Add(admin);
         await dbContext.SaveChangesAsync();
-        
-        Console.WriteLine($"DEBUG: Admin user created with ID: {admin.Id}");
-        
-        // Verify the user was saved
-        var savedAdmin = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Login == "admin");
-        Console.WriteLine($"DEBUG: After save - Admin user exists: {savedAdmin != null}");
     }
 
     private async Task<string> CreateUserIfNotExistsAsync(string login, string role, string password)
