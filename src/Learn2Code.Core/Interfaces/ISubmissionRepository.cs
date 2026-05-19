@@ -8,4 +8,6 @@ public interface ISubmissionRepository
     Task<IEnumerable<Submission>> GetByStudentAndTaskAsync(Guid studentId, Guid taskId);
     Task<IEnumerable<Submission>> GetAllByTaskIdAsync(Guid taskId);
     Task<Submission> CreateAsync(Submission submission);
+    Task UpdateAsync(Submission submission);
+    Task<Submission?> GetDraftByTaskAndStudentAsync(Guid taskId, Guid studentId);
 }

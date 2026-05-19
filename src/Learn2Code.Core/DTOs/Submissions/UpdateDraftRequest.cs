@@ -1,7 +1,6 @@
 namespace Learn2Code.Core.DTOs;
 
-public record SubmissionRequest(
-    string StudentId,
+public record UpdateDraftRequest(
     string Code,
     string? BlocklyXml = null
 );

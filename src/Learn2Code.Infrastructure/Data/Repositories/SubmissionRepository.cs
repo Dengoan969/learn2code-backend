@@ -21,7 +21,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<IEnumerable<Submission>> GetByStudentAndTaskAsync(Guid studentId, Guid taskId)
     {
         return await _context.Submissions
-            .Where(s => s.StudentId == studentId && s.TaskId == taskId)
+            .Where(s => s.StudentId == studentId && s.TaskId == taskId && !s.IsDraft)
             .OrderByDescending(s => s.SubmittedAt)
             .ToListAsync();
     }
@@ -29,7 +29,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<IEnumerable<Submission>> GetAllByTaskIdAsync(Guid taskId)
     {
         return await _context.Submissions
-            .Where(s => s.TaskId == taskId)
+            .Where(s => s.TaskId == taskId && !s.IsDraft)
             .OrderByDescending(s => s.SubmittedAt)
             .ToListAsync();
     }
@@ -39,5 +39,19 @@ public class SubmissionRepository : ISubmissionRepository
         _context.Submissions.Add(submission);
         await _context.SaveChangesAsync();
         return submission;
+    }
+
+    public async Task UpdateAsync(Submission submission)
+    {
+        _context.Submissions.Update(submission);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<Submission?> GetDraftByTaskAndStudentAsync(Guid taskId, Guid studentId)
+    {
+        return await _context.Submissions
+            .FirstOrDefaultAsync(s => s.TaskId == taskId &&
+                                     s.StudentId == studentId &&
+                                     s.IsDraft);
     }
 }

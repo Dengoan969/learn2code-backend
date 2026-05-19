@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Learn2Code.Core;
 using Learn2Code.Core.DTOs;
 using Learn2Code.Core.Entities;
 using Learn2Code.Core.Interfaces;
@@ -28,7 +29,7 @@ public class SubmissionService
         _submissions = submissions;
     }
 
-    public async Task<CheckResult> CheckAsync(Guid taskId, SubmissionRequest req)
+    public async Task<Submission> CheckAsync(Guid taskId, SubmissionRequest req)
     {
         // 1. Загрузка задания
         var task = await _tasks.GetByIdAsync(taskId);
@@ -59,16 +60,68 @@ public class SubmissionService
             TaskId = taskId,
             Code = req.Code,
             BlocklyXml = req.BlocklyXml ?? string.Empty,
-            BlockMapJson = JsonSerializer.Serialize(req.BlockMap),
-            Language = req.Language,
-            IsPassed = verdict.IsPassed,
-            IsOptimal = verdict.IsOptimal,
-            ResultJson = JsonSerializer.Serialize(verdict),
+            ResultJson = JsonSerializer.Serialize(verdict, JsonOptions.Default),
             SubmittedAt = DateTime.UtcNow
         };
         await _submissions.CreateAsync(submission);
         await _progress.SaveAsync(Guid.Parse(req.StudentId), taskId, verdict);
 
-        return verdict;
+        return submission;
+    }
+
+    public async Task<Submission?> GetDraftAsync(Guid taskId, Guid studentId)
+    {
+        return await _submissions.GetDraftByTaskAndStudentAsync(taskId, studentId);
+    }
+
+    public async Task<Submission> CreateDraftAsync(Guid taskId, Guid studentId)
+    {
+        var existing = await GetDraftAsync(taskId, studentId);
+        if (existing != null)
+            throw new InvalidOperationException("Черновик уже существует");
+            
+        var draft = new Submission
+        {
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            TaskId = taskId,
+            Code = string.Empty,
+            BlocklyXml = string.Empty,
+            IsDraft = true,
+            ResultJson = string.Empty,
+            SubmittedAt = DateTime.UtcNow
+        };
+        
+        await _submissions.CreateAsync(draft);
+        return draft;
+    }
+
+    public async Task<Submission> UpdateDraftAsync(Guid taskId, Guid studentId, UpdateDraftRequest request)
+    {
+        var draft = await GetDraftAsync(taskId, studentId);
+        if (draft == null)
+            throw new InvalidOperationException("Черновик не найден");
+        
+        draft.Code = request.Code;
+        draft.BlocklyXml = request.BlocklyXml ?? string.Empty;
+        draft.SubmittedAt = DateTime.UtcNow;
+        
+        await _submissions.UpdateAsync(draft);
+        return draft;
+    }
+
+    public async Task<Submission> SubmitDraftAsync(Guid taskId, Guid studentId)
+    {
+        var draft = await GetDraftAsync(taskId, studentId);
+        if (draft == null)
+            throw new InvalidOperationException("Черновик не найден");
+        
+        var request = new SubmissionRequest(
+            draft.StudentId.ToString(),
+            draft.Code,
+            draft.BlocklyXml
+        );
+        
+        return await CheckAsync(taskId, request);
     }
 }

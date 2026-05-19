@@ -7,7 +7,8 @@ public record CheckResult(
     bool IsOptimal,
     string Hint,
     List<CodeIssue> Issues,
-    Dictionary<string, double> Metrics
+    Dictionary<string, double> Metrics,
+    SceneState FinalState
 );
 
 public record CodeIssue(

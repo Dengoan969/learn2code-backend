@@ -49,7 +49,8 @@ public class CoreComparisonEngine : IVerificationEngine
                     { "ParameterSimilarity", 0.0 },
                     { "RedundantCount", 0.0 },
                     { "MissingCount", 0.0 }
-                }
+                },
+                execution.FinalState
             );
         }
 
@@ -86,7 +87,8 @@ public class CoreComparisonEngine : IVerificationEngine
             isOptimal,
             hint,
             issues,
-            metrics
+            metrics,
+            execution.FinalState
         );
     }
 

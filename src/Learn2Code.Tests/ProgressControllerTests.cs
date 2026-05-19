@@ -112,13 +112,19 @@ public class ProgressControllerTests : TestBase
             var student = await GetStudentAsync();
             SetBearerToken(student.Token);
             
-            var submitRequest = new SubmitSolutionRequest(
-                "python",
-                code,
-                null,
-                null);
-            var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}/submissions", submitRequest);
-            Assert.That(response.IsSuccessStatusCode, Is.True);
+            // Create draft
+            var createDraftResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}/submissions/draft", new { });
+            Assert.That(createDraftResponse.IsSuccessStatusCode, Is.True);
+            
+            // Update draft with code
+            var updateRequest = new UpdateDraftRequest(code, null);
+            var updateResponse = await Client.PutAsJsonAsync($"/api/tasks/{taskId}/submissions/draft", updateRequest);
+            Assert.That(updateResponse.IsSuccessStatusCode, Is.True);
+            
+            // Submit draft
+            var submitResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}/submissions/draft/submit", new { });
+            Assert.That(submitResponse.IsSuccessStatusCode, Is.True);
+            
             // После отправки прогресс должен быть создан автоматически
             return taskId;
         }

@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Text.Json;
 using Learn2Code.Core.DTOs;
 using Learn2Code.Core.Entities;
@@ -88,14 +90,8 @@ public class SubmissionPipelineIntegrationTests
 
         var submissionRequest = new SubmissionRequest(
             studentId,
-            "python",
             "move(2)\nturn(90, \"right\")",
-            "<xml>blockly</xml>",
-            new Dictionary<string, BlockMapping>
-            {
-                { "1", new BlockMapping("move_001", "motion_movesteps") },
-                { "2", new BlockMapping("turn_001", "motion_turnright") }
-            }
+            "<xml>blockly</xml>"
         );
 
         var executionResult = new ExecutionResult
@@ -125,7 +121,8 @@ public class SubmissionPipelineIntegrationTests
                 { "StateScore", 1.0 },
                 { "TraceSimilarity", 1.0 },
                 { "AstSimilarity", 1.0 }
-            }
+            },
+            executionResult.FinalState
         );
 
         _mockTaskRepository
@@ -162,9 +159,13 @@ public class SubmissionPipelineIntegrationTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _submissionService.CheckAsync(taskId, submissionRequest);
+        var submission = await _submissionService.CheckAsync(taskId, submissionRequest);
 
         // Assert
+        Assert.That(submission, Is.Not.Null);
+        Assert.That(submission.ResultJson, Is.Not.Null.Or.Empty);
+        
+        var result = JsonSerializer.Deserialize<CheckResult>(submission.ResultJson, Learn2Code.Core.JsonOptions.Default);
         Assert.That(result, Is.Not.Null);
         Assert.That(result.IsPassed, Is.True);
         Assert.That(result.IsOptimal, Is.True);
@@ -186,7 +187,7 @@ public class SubmissionPipelineIntegrationTests
         _mockProgressRepository.Verify(r => r.SaveAsync(
             It.Is<Guid>(id => id == Guid.Parse(studentId)),
             It.Is<Guid>(id => id == taskId),
-            It.Is<CheckResult>(cr => cr == result)), Times.Once);
+            It.Is<CheckResult>(cr => JsonComparisonHelper.JsonEquals(result, cr))), Times.Once);
     }
 
     [Test]
@@ -196,10 +197,8 @@ public class SubmissionPipelineIntegrationTests
         var taskId = Guid.NewGuid();
         var submissionRequest = new SubmissionRequest(
             Guid.NewGuid().ToString(),
-            "python",
             "move(2)",
-            "<xml>blockly</xml>",
-            new Dictionary<string, BlockMapping>()
+            "<xml>blockly</xml>"
         );
 
         _mockTaskRepository
@@ -232,10 +231,8 @@ public class SubmissionPipelineIntegrationTests
 
         var submissionRequest = new SubmissionRequest(
             Guid.NewGuid().ToString(),
-            "python",
             "invalid code that causes error",
-            "<xml>blockly</xml>",
-            new Dictionary<string, BlockMapping>()
+            "<xml>blockly</xml>"
         );
 
         var executionResult = new ExecutionResult
@@ -254,7 +251,8 @@ public class SubmissionPipelineIntegrationTests
             {
                 new(IssueType.StateMismatch, "Runtime error: division by zero", Severity.Error)
             },
-            new Dictionary<string, double>()
+            new Dictionary<string, double>(),
+            executionResult.FinalState
         );
 
         _mockTaskRepository
@@ -279,9 +277,12 @@ public class SubmissionPipelineIntegrationTests
             .Returns(checkResult);
 
         // Act
-        var result = await _submissionService.CheckAsync(taskId, submissionRequest);
+        var submission = await _submissionService.CheckAsync(taskId, submissionRequest);
 
         // Assert
+        Assert.That(submission.ResultJson, Is.Not.Null.Or.Empty);
+        var result = JsonSerializer.Deserialize<CheckResult>(submission.ResultJson, Learn2Code.Core.JsonOptions.Default);
+        Assert.That(result, Is.Not.Null);
         Assert.That(result.IsPassed, Is.False);
         Assert.That(result.Issues, Has.Count.EqualTo(1));
         Assert.That(result.Issues[0].Severity, Is.EqualTo(Severity.Error));
@@ -308,10 +309,8 @@ public class SubmissionPipelineIntegrationTests
 
         var submissionRequest = new SubmissionRequest(
             Guid.NewGuid().ToString(),
-            "python",
             "move(2)",
-            "<xml>blockly</xml>",
-            new Dictionary<string, BlockMapping>()
+            "<xml>blockly</xml>"
         );
 
         var executionResult = new ExecutionResult
@@ -342,7 +341,7 @@ public class SubmissionPipelineIntegrationTests
                 It.IsAny<ExecutionResult>(),
                 It.IsAny<SceneState>(),
                 It.Is<TaskConfig>(c => c.Level == CheckLevel.Normal))) // Default config
-            .Returns(new CheckResult(true, true, "OK", new List<CodeIssue>(), new Dictionary<string, double>()));
+            .Returns(new CheckResult(true, true, "OK", new List<CodeIssue>(), new Dictionary<string, double>(), new SceneState()));
 
         // Act
         await _submissionService.CheckAsync(taskId, submissionRequest);
@@ -378,13 +377,8 @@ public class SubmissionPipelineIntegrationTests
 
         var submissionRequest = new SubmissionRequest(
             studentId,
-            "python",
             "move(2)",
-            "<xml>blockly xml</xml>",
-            new Dictionary<string, BlockMapping>
-            {
-                { "1", new BlockMapping("move_001", "motion") }
-            }
+            "<xml>blockly xml</xml>"
         );
 
         var checkResult = new CheckResult(
@@ -392,7 +386,8 @@ public class SubmissionPipelineIntegrationTests
             false,
             "Good job",
             new List<CodeIssue>(),
-            new Dictionary<string, double>()
+            new Dictionary<string, double>(),
+            new SceneState()
         );
 
         Submission? capturedSubmission = null;
@@ -437,15 +432,8 @@ public class SubmissionPipelineIntegrationTests
         Assert.That(capturedSubmission.TaskId, Is.EqualTo(taskId));
         Assert.That(capturedSubmission.Code, Is.EqualTo(submissionRequest.Code));
         Assert.That(capturedSubmission.BlocklyXml, Is.EqualTo(submissionRequest.BlocklyXml));
-        Assert.That(capturedSubmission.Language, Is.EqualTo(submissionRequest.Language));
-        Assert.That(capturedSubmission.IsPassed, Is.EqualTo(checkResult.IsPassed));
-        Assert.That(capturedSubmission.IsOptimal, Is.EqualTo(checkResult.IsOptimal));
+        Assert.That(capturedSubmission.ResultJson, Is.Not.Null.Or.Empty);
         Assert.That(capturedSubmission.SubmittedAt, Is.EqualTo(capturedSubmission.SubmittedAt).Within(TimeSpan.FromSeconds(1)));
-        
-        // Verify BlockMapJson is serialized correctly
-        var blockMapJson = JsonSerializer.Deserialize<Dictionary<string, BlockMapping>>(capturedSubmission.BlockMapJson);
-        Assert.That(blockMapJson, Is.Not.Null);
-        Assert.That(blockMapJson!["1"].BlockId, Is.EqualTo("move_001"));
     }
 
     [Test]
@@ -469,10 +457,8 @@ public class SubmissionPipelineIntegrationTests
 
         var submissionRequest = new SubmissionRequest(
             Guid.NewGuid().ToString(),
-            "python",
             "move(2)",
-            null, // Null BlocklyXml
-            new Dictionary<string, BlockMapping>()
+            null // Null BlocklyXml
         );
 
         Submission? capturedSubmission = null;
@@ -501,7 +487,7 @@ public class SubmissionPipelineIntegrationTests
                 It.IsAny<ExecutionResult>(),
                 It.IsAny<SceneState>(),
                 It.IsAny<TaskConfig>()))
-            .Returns(new CheckResult(true, true, "OK", new List<CodeIssue>(), new Dictionary<string, double>()));
+            .Returns(new CheckResult(true, true, "OK", new List<CodeIssue>(), new Dictionary<string, double>(), new SceneState()));
 
         _mockSubmissionRepository
             .Setup(r => r.CreateAsync(It.IsAny<Submission>()))

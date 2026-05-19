@@ -5,5 +5,6 @@ public record CheckResultDto(
     bool IsOptimal,
     string Hint,
     List<CodeIssueDto> Issues,
-    Dictionary<string, double> Metrics
+    Dictionary<string, double> Metrics,
+    SceneStateDto FinalState
 );

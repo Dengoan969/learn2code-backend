@@ -27,38 +27,6 @@ public class SubmissionsController : ControllerBase
     }
 
     /// <summary>
-    ///     Отправить решение на проверку
-    /// </summary>
-    [HttpPost]
-    public async Task<ActionResult<SubmissionDto>> Submit(
-        Guid taskId,
-        [FromBody] SubmitSolutionRequest request)
-    {
-        var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(studentIdClaim))
-            return Unauthorized("Не удалось определить идентификатор студента");
-
-        var submissionRequest = new SubmissionRequest(
-            studentIdClaim,
-            request.Language,
-            request.Code,
-            request.BlocklyXml,
-            request.BlockMap
-        );
-
-        var result = await _submissionService.CheckAsync(taskId, submissionRequest);
-
-        var allSubmissions = await _submissions.GetAllByTaskIdAsync(taskId);
-        var latest = allSubmissions
-            .Where(s => s.StudentId.ToString() == studentIdClaim)
-            .OrderByDescending(s => s.SubmittedAt)
-            .First();
-
-        var dto = MapToDto(latest, MapToResultDto(result));
-        return Ok(dto);
-    }
-
-    /// <summary>
     ///     Получить результат конкретной попытки (только свои или для преподавателей/админов)
     /// </summary>
     [HttpGet("{submissionId}")]
@@ -116,6 +84,89 @@ public class SubmissionsController : ControllerBase
         return Ok(dtos);
     }
 
+    /// <summary>
+    ///     Получить черновик решения для задания
+    /// </summary>
+    [HttpGet("draft")]
+    public async Task<ActionResult<SubmissionDto>> GetDraft(Guid taskId)
+    {
+        var studentId = GetStudentId();
+        if (studentId == null)
+            return Unauthorized("Не удалось определить идентификатор студента");
+
+        var draft = await _submissionService.GetDraftAsync(taskId, studentId.Value);
+        if (draft == null)
+            return NotFound("Черновик не найден");
+
+        return MapToDto(draft, ParseResult(draft.ResultJson));
+    }
+
+    /// <summary>
+    ///     Создать новый черновик решения
+    /// </summary>
+    [HttpPost("draft")]
+    public async Task<ActionResult<SubmissionDto>> CreateDraft(Guid taskId)
+    {
+        var studentId = GetStudentId();
+        if (studentId == null)
+            return Unauthorized("Не удалось определить идентификатор студента");
+
+        try
+        {
+            var draft = await _submissionService.CreateDraftAsync(taskId, studentId.Value);
+            return CreatedAtAction(nameof(GetDraft), new { taskId }, MapToDto(draft, null));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
+    }
+
+    /// <summary>
+    ///     Обновить черновик решения
+    /// </summary>
+    [HttpPut("draft")]
+    public async Task<ActionResult<SubmissionDto>> UpdateDraft(
+        Guid taskId,
+        [FromBody] UpdateDraftRequest request)
+    {
+        var studentId = GetStudentId();
+        if (studentId == null)
+            return Unauthorized("Не удалось определить идентификатор студента");
+
+        try
+        {
+            var draft = await _submissionService.UpdateDraftAsync(taskId, studentId.Value, request);
+            return MapToDto(draft, ParseResult(draft.ResultJson));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    /// <summary>
+    ///     Отправить черновик на проверку
+    /// </summary>
+    [HttpPost("draft/submit")]
+    public async Task<ActionResult<SubmissionDto>> SubmitDraft(Guid taskId)
+    {
+        var studentId = GetStudentId();
+        if (studentId == null)
+            return Unauthorized("Не удалось определить идентификатор студента");
+
+        try
+        {
+            var submission = await _submissionService.SubmitDraftAsync(taskId, studentId.Value);
+            var result = ParseResult(submission.ResultJson);
+            return MapToDto(submission, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
     private static SubmissionDto MapToDto(Submission s, CheckResultDto? result)
     {
         return new SubmissionDto(
@@ -123,28 +174,9 @@ public class SubmissionsController : ControllerBase
             s.TaskId,
             s.StudentId.ToString(),
             s.Code,
-            s.Language,
-            s.IsPassed,
-            s.IsOptimal,
             s.SubmittedAt,
-            result
-        );
-    }
-
-    private static CheckResultDto MapToResultDto(CheckResult r)
-    {
-        return new CheckResultDto(
-            r.IsPassed,
-            r.IsOptimal,
-            r.Hint,
-            r.Issues.Select(i => new CodeIssueDto(
-                i.Type.ToString(),
-                i.Message,
-                i.Severity.ToString(),
-                i.BlockId,
-                i.Line
-            )).ToList(),
-            r.Metrics
+            result,
+            s.IsDraft
         );
     }
 
@@ -159,6 +191,14 @@ public class SubmissionsController : ControllerBase
         {
             return null;
         }
+    }
+
+    private Guid? GetStudentId()
+    {
+        var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(studentIdClaim) || !Guid.TryParse(studentIdClaim, out var studentId))
+            return null;
+        return studentId;
     }
 
     /// <summary>

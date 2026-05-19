@@ -5,9 +5,7 @@ public record SubmissionDto(
     Guid TaskId,
     string StudentId,
     string Code,
-    string Language,
-    bool IsPassed,
-    bool IsOptimal,
     DateTime SubmittedAt,
-    CheckResultDto? Result
+    CheckResultDto? Result,
+    bool IsDraft = false
 );
