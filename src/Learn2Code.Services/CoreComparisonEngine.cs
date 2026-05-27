@@ -21,21 +21,22 @@ public class CoreComparisonEngine : IVerificationEngine
         NormalizedProgram reference,
         ExecutionResult execution,
         SceneState expectedState,
-        TaskConfig config)
+        TaskConfig config,
+        ExecutionTrace solutionTrace)
     {
         // Если выполнение завершилось с ошибкой, сразу возвращаем неудачу
         if (!execution.Success)
         {
             var errorIssues = new List<CodeIssue>
             {
-                new CodeIssue(
+                new(
                     IssueType.SyntaxError,
                     $"Ошибка выполнения: {execution.Error}",
                     Severity.Error,
-                    null,  // BlockId
-                    1)     // Line
+                    null, // BlockId
+                    1) // Line
             };
-            
+
             return new CheckResult(
                 false,
                 false,
@@ -55,10 +56,13 @@ public class CoreComparisonEngine : IVerificationEngine
         }
 
         // 1. State-проверка (критическая)
-        var stateResult = CheckState(execution.FinalState, expectedState);
+        var stateResult = CheckState(execution.FinalState, expectedState, config);
 
         // 2. Trace-проверка (LCS последовательности событий)
-        var traceSimilarity = CalculateTraceSimilarity(execution.Trace, reference.Elements);
+        // Если есть solutionTrace, сравниваем с ним, иначе схожесть = 0
+        var traceSimilarity = solutionTrace != null
+            ? CalculateTraceSimilarityWithSolutionTrace(execution.Trace, solutionTrace)
+            : 0.0;
 
         // 3. AST-проверка (структурное + семантическое сходство)
         var astMetrics = CalculateAstSimilarity(student, reference);
@@ -66,8 +70,9 @@ public class CoreComparisonEngine : IVerificationEngine
         // Агрегация
         var isPassed = stateResult.IsPassed;
         var isOptimal = traceSimilarity >= config.MinTraceRatio
-            && astMetrics["RedundantCount"] == 0
-            && (!astMetrics.TryGetValue("ParameterMismatchCount", out var mismatchCount) || mismatchCount == 0);
+                        && astMetrics["RedundantCount"] == 0
+                        && (!astMetrics.TryGetValue("ParameterMismatchCount", out var mismatchCount) ||
+                            mismatchCount == 0);
 
         var issues = BuildIssues(stateResult, traceSimilarity, astMetrics, student, config);
         var hint = GenerateHint(stateResult, traceSimilarity, astMetrics, isPassed, isOptimal);
@@ -92,7 +97,7 @@ public class CoreComparisonEngine : IVerificationEngine
         );
     }
 
-    private StateCheckResult CheckState(SceneState actualState, SceneState expectedState)
+    private StateCheckResult CheckState(SceneState actualState, SceneState expectedState, TaskConfig config)
     {
         if (actualState == null)
             return new StateCheckResult(false, "Не удалось получить состояние сцены");
@@ -105,28 +110,29 @@ public class CoreComparisonEngine : IVerificationEngine
             // Debug logging
             Console.WriteLine($"CheckState: actualState.Sprites.Count = {actualState.Sprites.Count}");
             Console.WriteLine($"CheckState: expectedState.Sprites.Count = {expectedState.Sprites.Count}");
-            
+
             if (actualState.Sprites.Count > 0 && expectedState.Sprites.Count > 0)
             {
                 var actualCat = actualState.Sprites.OfType<CatState>().FirstOrDefault();
                 var expectedCat = expectedState.Sprites.OfType<CatState>().FirstOrDefault();
-                
+
                 if (actualCat != null && expectedCat != null)
                 {
-                    Console.WriteLine($"CheckState: actualCat at ({actualCat.GridX}, {actualCat.GridY}), direction {actualCat.Direction}");
-                    Console.WriteLine($"CheckState: expectedCat at ({expectedCat.GridX}, {expectedCat.GridY}), direction {expectedCat.Direction}");
-                    Console.WriteLine($"CheckState: actualCat.Costume = {actualCat.Costume}, expectedCat.Costume = {expectedCat.Costume}");
-                    Console.WriteLine($"CheckState: actualCat.Visible = {actualCat.Visible}, expectedCat.Visible = {expectedCat.Visible}");
+                    Console.WriteLine(
+                        $"CheckState: actualCat at ({actualCat.X}, {actualCat.Y}), direction {actualCat.Direction}");
+                    Console.WriteLine(
+                        $"CheckState: expectedCat at ({expectedCat.X}, {expectedCat.Y}), direction {expectedCat.Direction}");
+                    Console.WriteLine(
+                        $"CheckState: actualCat.Costume = {actualCat.Costume}, expectedCat.Costume = {expectedCat.Costume}");
+                    Console.WriteLine(
+                        $"CheckState: actualCat.Visible = {actualCat.Visible}, expectedCat.Visible = {expectedCat.Visible}");
                 }
             }
-            
-            var isEqual = _stateComparer.Compare(actualState, expectedState);
-            
-            if (!isEqual)
-            {
-                return new StateCheckResult(false, "Состояние сцены не соответствует ожидаемому");
-            }
-            
+
+            var isEqual = _stateComparer.Compare(actualState, expectedState, config.TolerancePx);
+
+            if (!isEqual) return new StateCheckResult(false, "Состояние сцены не соответствует ожидаемому");
+
             return new StateCheckResult(true, null);
         }
         catch (Exception ex)
@@ -166,6 +172,39 @@ public class CoreComparisonEngine : IVerificationEngine
         return Math.Round(similarity, 2);
     }
 
+    private double CalculateTraceSimilarityWithSolutionTrace(ExecutionTrace studentTrace, ExecutionTrace solutionTrace)
+    {
+        if (studentTrace == null || studentTrace.Events == null)
+            return 0.0;
+
+        if (solutionTrace == null || solutionTrace.Events == null)
+            return 0.0;
+
+        // Extract event types from both traces
+        var studentEvents = studentTrace.Events
+            .Select(e => e.EventType)
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToList();
+
+        var solutionEvents = solutionTrace.Events
+            .Select(e => e.EventType)
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToList();
+
+        // If solution trace is empty, nothing to compare - perfect similarity
+        if (solutionEvents.Count == 0)
+            return 1.0;
+
+        // If student trace is empty but solution is not, similarity is 0
+        if (studentEvents.Count == 0)
+            return 0.0;
+
+        // LCS (Longest Common Subsequence) для оценки сходства трасс
+        var lcsLength = CalculateLCS(studentEvents, solutionEvents);
+        var similarity = (double)lcsLength / Math.Max(solutionEvents.Count, studentEvents.Count);
+        return Math.Round(similarity, 2);
+    }
+
     private int CalculateLCS(List<string> seq1, List<string> seq2)
     {
         var m = seq1.Count;
@@ -199,17 +238,17 @@ public class CoreComparisonEngine : IVerificationEngine
         var semanticMatches = 0;
         var parameterMismatches = 0;
         var matchedStudentIndices = new HashSet<int>();
-        
+
         foreach (var refElement in reference.Elements)
         {
             var bestMatchIndex = -1;
             var bestMatchScore = 0.0;
-            
+
             for (var i = 0; i < student.Elements.Count; i++)
             {
                 if (matchedStudentIndices.Contains(i))
                     continue;
-                    
+
                 var studentElement = student.Elements[i];
                 var score = CalculateElementMatchScore(studentElement, refElement);
                 if (score > bestMatchScore)
@@ -218,12 +257,12 @@ public class CoreComparisonEngine : IVerificationEngine
                     bestMatchIndex = i;
                 }
             }
-            
+
             if (bestMatchIndex >= 0 && bestMatchScore >= 0.5)
             {
                 matchedStudentIndices.Add(bestMatchIndex);
                 semanticMatches++;
-                
+
                 if (bestMatchScore < 1.0)
                     parameterMismatches++;
             }
@@ -254,10 +293,10 @@ public class CoreComparisonEngine : IVerificationEngine
     {
         if (student.Type != reference.Type)
             return 0.0;
-            
+
         if (student.SemanticHint != reference.SemanticHint)
             return 0.3; // Partial match if types match but semantic hints differ
-            
+
         // Compare parameters
         var paramScore = CalculateParameterSimilarity(student.Parameters, reference.Parameters);
         return 0.7 + 0.3 * paramScore; // Base 0.7 for type+semantic match, up to 1.0 for perfect parameters
@@ -269,14 +308,15 @@ public class CoreComparisonEngine : IVerificationEngine
     {
         if (referenceParams.Count == 0)
             return 1.0;
-            
+
         var matched = 0;
         foreach (var (key, refValue) in referenceParams)
-        {
             if (studentParams.TryGetValue(key, out var studentValue))
             {
                 if (Equals(refValue, studentValue))
+                {
                     matched++;
+                }
                 else if (IsNumeric(refValue) && IsNumeric(studentValue))
                 {
                     var refNum = Convert.ToDouble(refValue);
@@ -285,8 +325,7 @@ public class CoreComparisonEngine : IVerificationEngine
                         matched++;
                 }
             }
-        }
-        
+
         return (double)matched / referenceParams.Count;
     }
 

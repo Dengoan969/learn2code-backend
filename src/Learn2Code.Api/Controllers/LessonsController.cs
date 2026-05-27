@@ -41,11 +41,11 @@ public class LessonsController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (userId == null) return Unauthorized();
-        
+
         var userIdGuid = Guid.Parse(userId);
-        
+
         // Проверяем доступ в зависимости от роли
         var hasAccess = role switch
         {
@@ -76,11 +76,11 @@ public class LessonsController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (userId == null) return Unauthorized();
-        
+
         var userIdGuid = Guid.Parse(userId);
-        
+
         // Проверяем доступ в зависимости от роли
         var hasAccess = role switch
         {

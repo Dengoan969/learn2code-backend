@@ -8,9 +8,9 @@ public static class JsonComparisonHelper
     private static readonly JsonSerializerOptions _options = JsonOptions.Default;
 
     /// <summary>
-    /// Сравнивает два объекта через их JSON-сериализацию.
-    /// Полезно для сравнения объектов, которые содержат сложные графы объектов
-    /// или полиморфные коллекции.
+    ///     Сравнивает два объекта через их JSON-сериализацию.
+    ///     Полезно для сравнения объектов, которые содержат сложные графы объектов
+    ///     или полиморфные коллекции.
     /// </summary>
     public static bool JsonEquals<T>(T a, T b)
     {
@@ -19,12 +19,12 @@ public static class JsonComparisonHelper
 
         var jsonA = JsonSerializer.Serialize(a, _options);
         var jsonB = JsonSerializer.Serialize(b, _options);
-        
+
         return jsonA == jsonB;
     }
 
     /// <summary>
-    /// Создает предикат для использования в Moq Verify с сравнением через JSON.
+    ///     Создает предикат для использования в Moq Verify с сравнением через JSON.
     /// </summary>
     public static Func<T, bool> JsonEquals<T>(T expected)
     {

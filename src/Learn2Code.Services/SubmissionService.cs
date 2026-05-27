@@ -42,7 +42,7 @@ public class SubmissionService
         // 3. Нормализация AST
         var analyzer = _engine.Analyzer;
         var studentProgram = await analyzer.ExtractAsync(req.Code);
-        
+
         // Handle null solution code - create empty reference program
         var referenceProgram = task.SolutionCode != null
             ? await analyzer.ExtractAsync(task.SolutionCode)
@@ -50,7 +50,8 @@ public class SubmissionService
 
         // 4. Сравнение - provide default SceneState if null
         var expectedState = task.ExpectedFinalState ?? new SceneState();
-        var verdict = _engine.Compare(studentProgram, referenceProgram, execResult, expectedState, task.Config);
+        var verdict = _engine.Compare(studentProgram, referenceProgram, execResult, expectedState, task.Config,
+            task.SolutionTrace);
 
         // 5. Сохранение результата
         var submission = new Submission
@@ -79,7 +80,7 @@ public class SubmissionService
         var existing = await GetDraftAsync(taskId, studentId);
         if (existing != null)
             throw new InvalidOperationException("Черновик уже существует");
-            
+
         var draft = new Submission
         {
             Id = Guid.NewGuid(),
@@ -91,7 +92,7 @@ public class SubmissionService
             ResultJson = string.Empty,
             SubmittedAt = DateTime.UtcNow
         };
-        
+
         await _submissions.CreateAsync(draft);
         return draft;
     }
@@ -101,11 +102,11 @@ public class SubmissionService
         var draft = await GetDraftAsync(taskId, studentId);
         if (draft == null)
             throw new InvalidOperationException("Черновик не найден");
-        
+
         draft.Code = request.Code;
         draft.BlocklyXml = request.BlocklyXml ?? string.Empty;
         draft.SubmittedAt = DateTime.UtcNow;
-        
+
         await _submissions.UpdateAsync(draft);
         return draft;
     }
@@ -115,13 +116,13 @@ public class SubmissionService
         var draft = await GetDraftAsync(taskId, studentId);
         if (draft == null)
             throw new InvalidOperationException("Черновик не найден");
-        
+
         var request = new SubmissionRequest(
             draft.StudentId.ToString(),
             draft.Code,
             draft.BlocklyXml
         );
-        
+
         return await CheckAsync(taskId, request);
     }
 }

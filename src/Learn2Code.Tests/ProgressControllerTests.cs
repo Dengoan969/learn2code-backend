@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using Learn2Code.Core.DTOs;
-using Learn2Code.Core.Enums;
-using Learn2Code.Core.Models;
 
 namespace Learn2Code.Tests;
 
@@ -17,7 +15,7 @@ public class ProgressControllerTests : TestBase
         {
             var teacher = await GetTeacherAsync();
             SetBearerToken(teacher.Token);
-            
+
             var createCourseRequest = new CreateCourseRequest(
                 title,
                 "Description");
@@ -35,14 +33,15 @@ public class ProgressControllerTests : TestBase
         }
     }
 
-    private async Task<Guid> CreateTestLessonAsync(Guid courseId, string title = "Test Lesson for Progress", int order = 1)
+    private async Task<Guid> CreateTestLessonAsync(Guid courseId, string title = "Test Lesson for Progress",
+        int order = 1)
     {
         var oldAuth = Client.DefaultRequestHeaders.Authorization;
         try
         {
             var teacher = await GetTeacherAsync();
             SetBearerToken(teacher.Token);
-            
+
             var createLessonRequest = new CreateLessonRequest(
                 title,
                 "Lesson Description",
@@ -69,18 +68,18 @@ public class ProgressControllerTests : TestBase
         {
             var teacher = await GetTeacherAsync();
             SetBearerToken(teacher.Token);
-            
+
             var config = new TaskConfigDto
             {
-                GridWidth = 20,
-                GridHeight = 20
+                SceneWidth = 20,
+                SceneHeight = 20
             };
-            
+
             var initialState = new SceneStateDto(
                 new CatStateDto
                 {
-                    GridX = 0,
-                    GridY = 0,
+                    X = 0,
+                    Y = 0,
                     Direction = 90.0,
                     Visible = true,
                     Costume = "default"
@@ -104,27 +103,28 @@ public class ProgressControllerTests : TestBase
         }
     }
 
-    private async Task<Guid> CreateTestSubmissionAndProgressAsync(Guid taskId, Guid studentId, string code = "print('Hello, World!')")
+    private async Task<Guid> CreateTestSubmissionAndProgressAsync(Guid taskId, Guid studentId,
+        string code = "print('Hello, World!')")
     {
         var oldAuth = Client.DefaultRequestHeaders.Authorization;
         try
         {
             var student = await GetStudentAsync();
             SetBearerToken(student.Token);
-            
+
             // Create draft
             var createDraftResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}/submissions/draft", new { });
             Assert.That(createDraftResponse.IsSuccessStatusCode, Is.True);
-            
+
             // Update draft with code
-            var updateRequest = new UpdateDraftRequest(code, null);
+            var updateRequest = new UpdateDraftRequest(code);
             var updateResponse = await Client.PutAsJsonAsync($"/api/tasks/{taskId}/submissions/draft", updateRequest);
             Assert.That(updateResponse.IsSuccessStatusCode, Is.True);
-            
+
             // Submit draft
             var submitResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}/submissions/draft/submit", new { });
             Assert.That(submitResponse.IsSuccessStatusCode, Is.True);
-            
+
             // После отправки прогресс должен быть создан автоматически
             return taskId;
         }
@@ -145,7 +145,7 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student.Id);
 
@@ -167,10 +167,10 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student1 = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student1.Id);
-        
+
         var student2 = await CreateAdditionalStudentAsync("otherstudent@example.com");
         SetBearerToken(student2.Token);
 
@@ -186,7 +186,7 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student.Id);
 
@@ -206,10 +206,10 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student.Id);
-        
+
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
 
@@ -243,7 +243,7 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student.Id);
 
@@ -265,10 +265,10 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student1 = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student1.Id);
-        
+
         var student2 = await CreateAdditionalStudentAsync("otherstudent2@example.com");
         SetBearerToken(student2.Token);
 
@@ -284,7 +284,7 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student.Id);
 
@@ -305,7 +305,7 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student.Id);
 
@@ -323,7 +323,7 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         // Не создаем отправку, поэтому прогресса не будет
 
@@ -341,7 +341,7 @@ public class ProgressControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
-        
+
         var student = await GetStudentAsync();
         var progressTaskId = await CreateTestSubmissionAndProgressAsync(taskId, student.Id);
 

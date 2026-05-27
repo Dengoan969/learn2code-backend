@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Learn2Code.Core;
 
 namespace Learn2Code.Api.Middleware;
 
@@ -45,7 +46,7 @@ public class GlobalExceptionMiddleware
             innerException = isDevelopment ? GetInnerExceptionDetails(exception) : null
         };
 
-        var json = JsonSerializer.Serialize(response, Learn2Code.Core.JsonOptions.Default);
+        var json = JsonSerializer.Serialize(response, JsonOptions.Default);
         await context.Response.WriteAsync(json);
     }
 
@@ -56,7 +57,7 @@ public class GlobalExceptionMiddleware
 
         var innerExceptions = new List<object>();
         var current = exception;
-        
+
         while (current != null)
         {
             innerExceptions.Add(new

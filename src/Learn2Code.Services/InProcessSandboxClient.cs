@@ -2,9 +2,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using Learn2Code.Core.DTOs;
+using Learn2Code.Core;
 using Learn2Code.Core.Interfaces;
-using Learn2Code.Core.Mappings;
 using Learn2Code.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -33,9 +32,9 @@ public class InProcessSandboxClient : ISandboxClient
     public async Task<ExecutionResult> ExecuteAsync(string code, SceneState initialState, TaskConfig config)
     {
         // Convert Models to DTOs for serialization
-        
-        var request = new { code, initialState = initialState, config = config };
-        var requestJson = JsonSerializer.Serialize(request, Learn2Code.Core.JsonOptions.Default);
+
+        var request = new { code, initialState, config };
+        var requestJson = JsonSerializer.Serialize(request, JsonOptions.Default);
 
         var startInfo = new ProcessStartInfo
         {
@@ -60,7 +59,7 @@ public class InProcessSandboxClient : ISandboxClient
         {
             throw new InvalidOperationException($"Не удалось запустить Python: {_pythonPath}", ex);
         }
-        
+
         if (process == null)
             throw new InvalidOperationException($"Не удалось запустить Python: {_pythonPath}");
 
@@ -96,7 +95,7 @@ public class InProcessSandboxClient : ISandboxClient
         {
             _logger.LogDebug("Raw stdout from sandbox: {Stdout}", stdout);
             // Deserialize into DTO first using centralized JsonOptions
-            var resultDto = JsonSerializer.Deserialize<ExecutionResult>(stdout, Learn2Code.Core.JsonOptions.Default);
+            var resultDto = JsonSerializer.Deserialize<ExecutionResult>(stdout, JsonOptions.Default);
             if (resultDto == null)
                 throw new InvalidOperationException("Пустой ответ от песочницы");
 

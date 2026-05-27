@@ -1,4 +1,4 @@
-using Learn2Code.Core.Enums;
+﻿using Learn2Code.Core.Enums;
 using Learn2Code.Core.Interfaces;
 using Learn2Code.Core.Models;
 using Learn2Code.Services;
@@ -9,9 +9,6 @@ namespace Learn2Code.Tests;
 [Parallelizable]
 public class CoreComparisonEngineTests
 {
-    private CoreComparisonEngine _engine;
-    private MockLanguageAnalyzer _mockAnalyzer;
-
     [SetUp]
     public void SetUp()
     {
@@ -19,35 +16,42 @@ public class CoreComparisonEngineTests
         _engine = new CoreComparisonEngine(_mockAnalyzer);
     }
 
+    private CoreComparisonEngine _engine;
+    private MockLanguageAnalyzer _mockAnalyzer;
+
     [Test]
     public void Compare_WhenStateMatchesExactly_ReturnsPassed()
     {
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var catState = new CatState
         {
-            GridX = 5,
-            GridY = 3,
+            X = 250.0, // 5 * 50px
+            Y = 150.0, // 3 * 50px
+            Width = 50.0,
+            Height = 50.0,
             Direction = 90.0,
             Visible = true,
             Costume = "default"
         };
-        
+
         var expectedState = new SceneState();
         expectedState.Sprites.Add(catState);
-        
+
         var actualState = new SceneState();
         actualState.Sprites.Add(new CatState
         {
-            GridX = 5,
-            GridY = 3,
+            X = 250.0,
+            Y = 150.0,
+            Width = 50.0,
+            Height = 50.0,
             Direction = 90.0,
             Visible = true,
             Costume = "default"
         });
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -55,18 +59,19 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
             TolerancePx = 5.0,
             MinTraceRatio = 0.8,
             Level = CheckLevel.Normal
         };
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.True);
@@ -79,25 +84,29 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
         expectedState.Sprites.Add(new CatState
         {
-            GridX = 5,
-            GridY = 3,
+            X = 250.0, // 5 * 50px
+            Y = 150.0, // 3 * 50px
+            Width = 50.0,
+            Height = 50.0,
             Direction = 90.0,
             Visible = true
         });
-        
+
         var actualState = new SceneState();
         actualState.Sprites.Add(new CatState
         {
-            GridX = 10,  // Different position
-            GridY = 3,
+            X = 500.0, // 10 * 50px - Different position
+            Y = 150.0,
+            Width = 50.0,
+            Height = 50.0,
             Direction = 90.0,
             Visible = true
         });
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -105,18 +114,19 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
             TolerancePx = 5.0,
             MinTraceRatio = 0.8,
             Level = CheckLevel.Normal
         };
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);
@@ -133,26 +143,30 @@ public class CoreComparisonEngineTests
         {
             Elements = new List<CodeElement>
             {
-                new CodeElement { Type = "move", Parameters = new Dictionary<string, object?> { { "cells", 2 } } },
-                new CodeElement { Type = "turn", Parameters = new Dictionary<string, object?> { { "degrees", 90 }, { "direction", "right" } } }
+                new() { Type = "move", Parameters = new Dictionary<string, object?> { { "cells", 2 } } },
+                new() { Type = "turn", Parameters = new Dictionary<string, object?> { { "degrees", 90 } } }
             }
         };
-        
+
         var expectedState = new SceneState();
-        expectedState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        
+        expectedState.Sprites.Add(new CatState { X = 5, Y = 3 });
+
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
+
         var trace = new ExecutionTrace
         {
             Events = new List<ExecutionEvent>
             {
-                new ExecutionEvent { Step = 1, EventType = "move", Details = new Dictionary<string, object> { { "cells", 2 } } },
-                new ExecutionEvent { Step = 2, EventType = "turn", Details = new Dictionary<string, object> { { "degrees", 90 }, { "direction", "right" } } }
+                new() { Step = 1, EventType = "move", Details = new Dictionary<string, object> { { "cells", 2 } } },
+                new()
+                {
+                    Step = 2, EventType = "turn",
+                    Details = new Dictionary<string, object> { { "degrees", 90 }, { "new_direction", 90.0 } }
+                }
             }
         };
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -160,22 +174,36 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
+            SceneWidth = 20,
+            SceneHeight = 20,
             TolerancePx = 5.0,
-            MinTraceRatio = 0.8,  // 80% similarity required
+            MinTraceRatio = 0.8, // 80% similarity required
             Level = CheckLevel.Normal
         };
 
+        // Create solution trace matching reference program (events as they would be logged by Python)
+        var solutionTrace = new ExecutionTrace
+        {
+            Events = new List<ExecutionEvent>
+            {
+                new() { Step = 1, EventType = "move", Details = new Dictionary<string, object> { { "cells", 2 } } },
+                new()
+                {
+                    Step = 2, EventType = "turn",
+                    Details = new Dictionary<string, object> { { "degrees", 90 }, { "new_direction", 90.0 } }
+                }
+            }
+        };
+
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config, solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True);
-        Assert.That(result.IsOptimal, Is.True);  // Trace similarity should be 1.0 (100%)
+        Assert.That(result.IsOptimal, Is.True); // Trace similarity should be 1.0 (100%)
     }
 
     [Test]
@@ -187,27 +215,27 @@ public class CoreComparisonEngineTests
         {
             Elements = new List<CodeElement>
             {
-                new CodeElement { Type = "move", Parameters = new Dictionary<string, object?> { { "cells", 2 } } },
-                new CodeElement { Type = "turn", Parameters = new Dictionary<string, object?> { { "degrees", 90 }, { "direction", "right" } } },
-                new CodeElement { Type = "move", Parameters = new Dictionary<string, object?> { { "cells", 1 } } }
+                new() { Type = "move", Parameters = new Dictionary<string, object?> { { "cells", 2 } } },
+                new() { Type = "turn", Parameters = new Dictionary<string, object?> { { "degrees", 90 } } },
+                new() { Type = "move", Parameters = new Dictionary<string, object?> { { "cells", 1 } } }
             }
         };
-        
+
         var expectedState = new SceneState();
-        expectedState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        
+        expectedState.Sprites.Add(new CatState { X = 5, Y = 3 });
+
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
+
         var trace = new ExecutionTrace
         {
             Events = new List<ExecutionEvent>
             {
-                new ExecutionEvent { Step = 1, EventType = "move", Details = new Dictionary<string, object> { { "cells", 2 } } }
+                new() { Step = 1, EventType = "move", Details = new Dictionary<string, object> { { "cells", 2 } } }
                 // Missing turn and second move events
             }
         };
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -215,22 +243,37 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
+            SceneWidth = 20,
+            SceneHeight = 20,
             TolerancePx = 5.0,
-            MinTraceRatio = 0.8,  // 80% similarity required
+            MinTraceRatio = 0.8, // 80% similarity required
             Level = CheckLevel.Normal
         };
 
+        // Create solution trace matching reference program
+        var solutionTrace = new ExecutionTrace
+        {
+            Events = new List<ExecutionEvent>
+            {
+                new() { Step = 1, EventType = "move", Details = new Dictionary<string, object> { { "cells", 2 } } },
+                new()
+                {
+                    Step = 2, EventType = "turn",
+                    Details = new Dictionary<string, object> { { "degrees", 90 }, { "direction", "right" } }
+                },
+                new() { Step = 3, EventType = "move", Details = new Dictionary<string, object> { { "cells", 1 } } }
+            }
+        };
+
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config, solutionTrace);
 
         // Assert
-        Assert.That(result.IsPassed, Is.True);  // State matches
-        Assert.That(result.IsOptimal, Is.False);  // Trace similarity is 1/3 ≈ 0.33 < 0.8
+        Assert.That(result.IsPassed, Is.True); // State matches
+        Assert.That(result.IsOptimal, Is.False); // Trace similarity is 1/3 ≈ 0.33 < 0.8
     }
 
     [Test]
@@ -239,10 +282,10 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
         var actualState = new SceneState();
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -250,11 +293,12 @@ public class CoreComparisonEngineTests
             Success = false,
             Error = "Runtime error: division by zero"
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);
@@ -268,21 +312,22 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
-        
+
         var execution = new ExecutionResult
         {
-            FinalState = null!,  // Null state
+            FinalState = null!, // Null state
             Trace = new ExecutionTrace(),
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);
@@ -296,10 +341,10 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -307,11 +352,11 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, null!, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, null!, config, new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);
@@ -325,17 +370,17 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
-        expectedState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        expectedState.Sprites.Add(new AppleState { GridX = 10, GridY = 7 });
-        expectedState.Sprites.Add(new WallState { GridX = 15, GridY = 12 });
-        
+        expectedState.Sprites.Add(new CatState { X = 5, Y = 3 });
+        expectedState.Sprites.Add(new AppleState { X = 10, Y = 7 });
+        expectedState.Sprites.Add(new WallState { X = 15, Y = 12 });
+
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        actualState.Sprites.Add(new AppleState { GridX = 10, GridY = 7 });
-        actualState.Sprites.Add(new WallState { GridX = 15, GridY = 12 });
-        
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
+        actualState.Sprites.Add(new AppleState { X = 10, Y = 7 });
+        actualState.Sprites.Add(new WallState { X = 15, Y = 12 });
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -343,11 +388,12 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.True);
@@ -359,15 +405,15 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
-        expectedState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        expectedState.Sprites.Add(new AppleState { GridX = 10, GridY = 7 });
-        
+        expectedState.Sprites.Add(new CatState { X = 5, Y = 3 });
+        expectedState.Sprites.Add(new AppleState { X = 10, Y = 7 });
+
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
         // Missing apple sprite
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -375,11 +421,12 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);
@@ -391,16 +438,16 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
-        expectedState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        expectedState.Sprites.Add(new AppleState { GridX = 10, GridY = 7 });
-        
+        expectedState.Sprites.Add(new CatState { X = 5, Y = 3 });
+        expectedState.Sprites.Add(new AppleState { X = 10, Y = 7 });
+
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { GridX = 5, GridY = 3 });
-        actualState.Sprites.Add(new AppleState { GridX = 10, GridY = 7 });
-        actualState.Sprites.Add(new AppleState { GridX = 12, GridY = 8 });  // Extra apple
-        
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
+        actualState.Sprites.Add(new AppleState { X = 10, Y = 7 });
+        actualState.Sprites.Add(new AppleState { X = 12, Y = 8 }); // Extra apple
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -408,11 +455,12 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);
@@ -424,13 +472,13 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
-        expectedState.Sprites.Add(new CatState { GridX = 5, GridY = 3, Direction = 90.0 });
-        
+        expectedState.Sprites.Add(new CatState { X = 5, Y = 3, Direction = 90.0 });
+
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { GridX = 5, GridY = 3, Direction = 180.0 });  // Different direction
-        
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3, Direction = 180.0 }); // Different direction
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -438,11 +486,12 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);
@@ -454,19 +503,19 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
-        var expectedCat = new CatState { GridX = 5, GridY = 3 };
+        var expectedCat = new CatState { X = 5, Y = 3 };
         expectedCat.SaidTexts["Hello"] = 1;
         expectedCat.SaidTexts["World"] = 2;
         expectedState.Sprites.Add(expectedCat);
-        
+
         var actualState = new SceneState();
-        var actualCat = new CatState { GridX = 5, GridY = 3 };
+        var actualCat = new CatState { X = 5, Y = 3 };
         actualCat.SaidTexts["Hello"] = 1;
         actualCat.SaidTexts["World"] = 2;
         actualState.Sprites.Add(actualCat);
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -474,11 +523,12 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.True);
@@ -490,19 +540,19 @@ public class CoreComparisonEngineTests
         // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
-        
+
         var expectedState = new SceneState();
-        var expectedCat = new CatState { GridX = 5, GridY = 3 };
+        var expectedCat = new CatState { X = 5, Y = 3 };
         expectedCat.SaidTexts["Hello"] = 1;
         expectedCat.SaidTexts["World"] = 2;
         expectedState.Sprites.Add(expectedCat);
-        
+
         var actualState = new SceneState();
-        var actualCat = new CatState { GridX = 5, GridY = 3 };
+        var actualCat = new CatState { X = 5, Y = 3 };
         actualCat.SaidTexts["Hello"] = 1;
-        actualCat.SaidTexts["Test"] = 1;  // Different text
+        actualCat.SaidTexts["Test"] = 1; // Different text
         actualState.Sprites.Add(actualCat);
-        
+
         var execution = new ExecutionResult
         {
             FinalState = actualState,
@@ -510,11 +560,12 @@ public class CoreComparisonEngineTests
             Success = true,
             Error = null
         };
-        
+
         var config = new TaskConfig();
 
         // Act
-        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False);

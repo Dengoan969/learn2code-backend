@@ -3,15 +3,19 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Any
 
 class SpriteType(Enum):
-    CAT = "Cat"
-    APPLE = "Apple"
-    WALL = "Wall"
+    CAT = "cat"
+    APPLE = "apple"
+    WALL = "wall"
 
 @dataclass
 class SpriteState:
     type: SpriteType
-    grid_x: int = 0
-    grid_y: int = 0
+    # ЗАМЕНА: grid_x, grid_y → x, y (float)
+    x: float = 0.0          # Пиксели, центр спрайта
+    y: float = 0.0          # Пиксели, центр спрайта
+    # НОВОЕ: Размеры спрайта
+    width: float = 50.0     # Ширина в пикселях
+    height: float = 50.0    # Высота в пикселях
     visible: bool = True
 
 @dataclass
@@ -19,7 +23,7 @@ class CatState(SpriteState):
     direction: float = 90.0
     costume: str = "default"
     said_texts: Dict[str, int] = field(default_factory=dict)
-    collected_items: Dict[str, int] = field(default_factory=dict)
+    collected_items: Dict[str, int] = field(default_factory=dict)  # ОСТАВИТЬ - сбор яблок
     
     def __post_init__(self):
         self.type = SpriteType.CAT

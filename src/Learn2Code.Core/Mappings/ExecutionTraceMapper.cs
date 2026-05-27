@@ -8,7 +8,7 @@ public static class ExecutionTraceMapper
     public static ExecutionTraceDto ToDto(ExecutionTrace? model)
     {
         if (model == null) return null!;
-        
+
         return new ExecutionTraceDto
         {
             Events = model.Events.Select(ExecutionEventMapper.ToDto).ToList()
@@ -18,7 +18,7 @@ public static class ExecutionTraceMapper
     public static ExecutionTrace ToModel(ExecutionTraceDto? dto)
     {
         if (dto == null) return null!;
-        
+
         return new ExecutionTrace
         {
             Events = dto.Events.Select(ExecutionEventMapper.ToModel).ToList()
@@ -28,7 +28,7 @@ public static class ExecutionTraceMapper
     public static ExecutionResult ToModel(ExecutionResultDto dto)
     {
         if (dto == null) return null!;
-        
+
         return new ExecutionResult
         {
             Success = dto.Success,
@@ -41,7 +41,7 @@ public static class ExecutionTraceMapper
     public static ExecutionResultDto ToDto(ExecutionResult model)
     {
         if (model == null) return null!;
-        
+
         return new ExecutionResultDto
         {
             Success = model.Success,

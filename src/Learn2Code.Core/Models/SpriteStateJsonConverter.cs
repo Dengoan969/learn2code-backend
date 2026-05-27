@@ -5,13 +5,15 @@ using Learn2Code.Core.Enums;
 namespace Learn2Code.Core.Models;
 
 /// <summary>
-/// Custom JSON converter for SpriteState that handles polymorphic deserialization
-/// based on the "type" field in JSON (matching Python sandbox output).
+///     Custom JSON converter for SpriteState that handles polymorphic deserialization
+///     based on the "type" field in JSON (matching Python sandbox output).
 /// </summary>
 public class SpriteStateJsonConverter : JsonConverter<SpriteState>
 {
-    public override bool CanConvert(Type typeToConvert) =>
-        typeof(SpriteState).IsAssignableFrom(typeToConvert);
+    public override bool CanConvert(Type typeToConvert)
+    {
+        return typeof(SpriteState).IsAssignableFrom(typeToConvert);
+    }
 
     public override SpriteState Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
@@ -29,7 +31,7 @@ public class SpriteStateJsonConverter : JsonConverter<SpriteState>
             throw new JsonException("Sprite type is null or empty");
 
         // Parse the type string to SpriteType enum
-        if (!Enum.TryParse<SpriteType>(typeStr, ignoreCase: true, out var spriteType))
+        if (!Enum.TryParse<SpriteType>(typeStr, true, out var spriteType))
             throw new JsonException($"Unknown sprite type: {typeStr}");
 
         // Create new options without this converter to avoid recursion
@@ -41,13 +43,11 @@ public class SpriteStateJsonConverter : JsonConverter<SpriteState>
             DefaultIgnoreCondition = options.DefaultIgnoreCondition,
             WriteIndented = options.WriteIndented
         };
-        
+
         // Copy all converters except SpriteStateJsonConverter
         foreach (var converter in options.Converters)
-        {
             if (converter is not SpriteStateJsonConverter)
                 optionsWithoutConverter.Converters.Add(converter);
-        }
 
         SpriteState? result = spriteType switch
         {
@@ -71,13 +71,11 @@ public class SpriteStateJsonConverter : JsonConverter<SpriteState>
             DefaultIgnoreCondition = options.DefaultIgnoreCondition,
             WriteIndented = options.WriteIndented
         };
-        
+
         // Copy all converters except SpriteStateJsonConverter
         foreach (var converter in options.Converters)
-        {
             if (converter is not SpriteStateJsonConverter)
                 optionsWithoutConverter.Converters.Add(converter);
-        }
 
         // Use default serialization for writing
         JsonSerializer.Serialize(writer, value, value.GetType(), optionsWithoutConverter);

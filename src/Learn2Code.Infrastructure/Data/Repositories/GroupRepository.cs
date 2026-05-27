@@ -17,7 +17,7 @@ public class GroupRepository : IGroupRepository
     {
         return await _context.Groups
             .Include(g => g.GroupStudents)
-                .ThenInclude(gs => gs.Student)
+            .ThenInclude(gs => gs.Student)
             .FirstOrDefaultAsync(g => g.Id == id);
     }
 
@@ -25,7 +25,7 @@ public class GroupRepository : IGroupRepository
     {
         return await _context.Groups
             .Include(g => g.GroupStudents)
-                .ThenInclude(gs => gs.Student)
+            .ThenInclude(gs => gs.Student)
             .OrderBy(g => g.CreatedAt)
             .ToListAsync();
     }
@@ -34,7 +34,7 @@ public class GroupRepository : IGroupRepository
     {
         return await _context.Groups
             .Include(g => g.GroupStudents)
-                .ThenInclude(gs => gs.Student)
+            .ThenInclude(gs => gs.Student)
             .Where(g => g.CourseId == courseId)
             .OrderBy(g => g.CreatedAt)
             .ToListAsync();
@@ -44,7 +44,7 @@ public class GroupRepository : IGroupRepository
     {
         return await _context.Groups
             .Include(g => g.GroupStudents)
-                .ThenInclude(gs => gs.Student)
+            .ThenInclude(gs => gs.Student)
             .Where(g => g.TeacherId == teacherId)
             .OrderBy(g => g.CreatedAt)
             .ToListAsync();
@@ -56,15 +56,12 @@ public class GroupRepository : IGroupRepository
             .Where(gs => gs.StudentId == studentId)
             .Select(gs => gs.GroupId)
             .ToListAsync();
-        
-        if (groupIds.Count == 0)
-        {
-            return new List<Group>();
-        }
-        
+
+        if (groupIds.Count == 0) return new List<Group>();
+
         return await _context.Groups
             .Include(g => g.GroupStudents)
-                .ThenInclude(gs => gs.Student)
+            .ThenInclude(gs => gs.Student)
             .Where(g => groupIds.Contains(g.Id))
             .OrderBy(g => g.CreatedAt)
             .ToListAsync();
@@ -96,24 +93,15 @@ public class GroupRepository : IGroupRepository
     public async Task AddStudentToGroupAsync(Guid groupId, Guid studentId)
     {
         var group = await _context.Groups.FindAsync(groupId);
-        if (group == null)
-        {
-            throw new InvalidOperationException($"Group with id {groupId} not found");
-        }
+        if (group == null) throw new InvalidOperationException($"Group with id {groupId} not found");
 
         var student = await _context.Users.FindAsync(studentId);
-        if (student == null)
-        {
-            throw new InvalidOperationException($"Student with id {studentId} not found");
-        }
+        if (student == null) throw new InvalidOperationException($"Student with id {studentId} not found");
 
         var existingMembership = await _context.GroupStudents
             .FirstOrDefaultAsync(gs => gs.GroupId == groupId && gs.StudentId == studentId);
 
-        if (existingMembership != null)
-        {
-            return;
-        }
+        if (existingMembership != null) return;
 
         var groupStudent = new GroupStudent
         {

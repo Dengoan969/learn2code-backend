@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Learn2Code.Core;
 using Learn2Code.Core.Entities;
 using Learn2Code.Core.Models;
@@ -75,26 +76,26 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.InitialState)
                 .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, jsonOptions),
-                    v => System.Text.Json.JsonSerializer.Deserialize<SceneState>(v, jsonOptions) ?? new SceneState()
+                    v => JsonSerializer.Serialize(v, jsonOptions),
+                    v => JsonSerializer.Deserialize<SceneState>(v, jsonOptions) ?? new SceneState()
                 );
 
             entity.Property(e => e.ExpectedFinalState)
                 .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, jsonOptions),
-                    v => System.Text.Json.JsonSerializer.Deserialize<SceneState>(v, jsonOptions) ?? new SceneState()
+                    v => JsonSerializer.Serialize(v, jsonOptions),
+                    v => JsonSerializer.Deserialize<SceneState>(v, jsonOptions) ?? new SceneState()
                 );
 
             entity.Property(e => e.SolutionTrace)
                 .HasConversion(
-                    v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, jsonOptions),
-                    v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<ExecutionTrace>(v, jsonOptions)
+                    v => v == null ? null : JsonSerializer.Serialize(v, jsonOptions),
+                    v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<ExecutionTrace>(v, jsonOptions)
                 );
 
             entity.Property(e => e.Config)
                 .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, jsonOptions),
-                    v => System.Text.Json.JsonSerializer.Deserialize<TaskConfig>(v, jsonOptions) ?? new TaskConfig()
+                    v => JsonSerializer.Serialize(v, jsonOptions),
+                    v => JsonSerializer.Deserialize<TaskConfig>(v, jsonOptions) ?? new TaskConfig()
                 );
         });
 

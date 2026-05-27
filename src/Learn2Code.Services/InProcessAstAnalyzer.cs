@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Learn2Code.Core;
 using Learn2Code.Core.Interfaces;
 using Learn2Code.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -57,7 +58,7 @@ public class InProcessAstAnalyzer : ILanguageAnalyzer
         {
             throw new InvalidOperationException($"Не удалось запустить Python: {_pythonPath}", ex);
         }
-        
+
         if (process == null)
             throw new InvalidOperationException($"Не удалось запустить Python: {_pythonPath}");
 
@@ -78,7 +79,7 @@ public class InProcessAstAnalyzer : ILanguageAnalyzer
         var stderr = await stderrTask;
 
         _logger.LogDebug("Python AST extractor stdout length: {Length}, stderr: {Stderr}", stdout.Length, stderr);
-        
+
         if (string.IsNullOrWhiteSpace(stdout))
         {
             _logger.LogError("Python AST extractor returned empty output. stderr: {Stderr}", stderr);
@@ -87,11 +88,12 @@ public class InProcessAstAnalyzer : ILanguageAnalyzer
 
         try
         {
-            var result = JsonSerializer.Deserialize<AstExtractResult>(stdout, Learn2Code.Core.JsonOptions.Default);
+            var result = JsonSerializer.Deserialize<AstExtractResult>(stdout, JsonOptions.Default);
             if (result == null || !result.Success)
             {
                 var errMsg = result?.ToString() ?? "null result";
-                _logger.LogError("AST extractor returned unsuccessful result. stdout: {Stdout}, stderr: {Stderr}", stdout, stderr);
+                _logger.LogError("AST extractor returned unsuccessful result. stdout: {Stdout}, stderr: {Stderr}",
+                    stdout, stderr);
                 throw new InvalidOperationException($"AST extractor error. stdout: {stdout}, stderr: {stderr}");
             }
 
@@ -100,12 +102,9 @@ public class InProcessAstAnalyzer : ILanguageAnalyzer
             {
                 var parameters = new Dictionary<string, object?>();
                 if (elem.Parameters != null)
-                {
                     foreach (var (key, value) in elem.Parameters)
-                    {
                         // Convert JSON values to C# objects
                         if (value is JsonElement jsonElement)
-                        {
                             parameters[key] = jsonElement.ValueKind switch
                             {
                                 JsonValueKind.String => jsonElement.GetString()!,
@@ -115,13 +114,8 @@ public class InProcessAstAnalyzer : ILanguageAnalyzer
                                 JsonValueKind.Null => null,
                                 _ => jsonElement.ToString()
                             };
-                        }
                         else
-                        {
                             parameters[key] = value;
-                        }
-                    }
-                }
 
                 program.Elements.Add(new CodeElement
                 {

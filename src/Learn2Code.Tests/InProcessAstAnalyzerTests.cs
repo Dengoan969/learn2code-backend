@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Learn2Code.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -8,89 +9,82 @@ namespace Learn2Code.Tests;
 [Parallelizable]
 public class InProcessAstAnalyzerTests
 {
-    private Mock<ILogger<InProcessAstAnalyzer>> _mockLogger;
-    private string _tempSandboxDir;
-    private string _pythonPath;
-
     [SetUp]
     public void SetUp()
     {
         _mockLogger = new Mock<ILogger<InProcessAstAnalyzer>>();
-        
+
         // Create temporary sandbox directory for tests
         _tempSandboxDir = Path.Combine(Path.GetTempPath(), $"ast_test_{Guid.NewGuid()}");
         Directory.CreateDirectory(_tempSandboxDir);
-        
+
         // Create ast_extractor.py for testing
         var astExtractorPath = Path.Combine(_tempSandboxDir, "ast_extractor.py");
         File.WriteAllText(astExtractorPath, """
-import sys
-import json
+                                            import sys
+                                            import json
 
-def main():
-    code = sys.stdin.read()
-    
-    # Test simulation - return different responses based on code content
-    if "syntax_error" in code:
-        print(json.dumps({"success": False, "error": "SyntaxError: invalid syntax"}))
-    elif "empty" in code:
-        print(json.dumps({"success": True, "elements": [], "metrics": {}}))
-    elif "simple_move" in code:
-        result = {
-            "success": True,
-            "elements": [
-                {"type": "FunctionCall", "semanticHint": "move", "line": 3, "blockId": "move_001"},
-                {"type": "FunctionCall", "semanticHint": "turn", "line": 4, "blockId": "turn_001"}
-            ],
-            "metrics": {
-                "loopCount": 0,
-                "conditionCount": 0,
-                "functionCalls": 2,
-                "complexity": 2
-            }
-        }
-        print(json.dumps(result))
-    elif "with_loop" in code:
-        result = {
-            "success": True,
-            "elements": [
-                {"type": "Loop", "semanticHint": "loop", "line": 3, "blockId": "repeat_001"},
-                {"type": "FunctionCall", "semanticHint": "move", "line": 4, "blockId": "move_001"}
-            ],
-            "metrics": {
-                "loopCount": 1,
-                "conditionCount": 0,
-                "functionCalls": 1,
-                "complexity": 2
-            }
-        }
-        print(json.dumps(result))
-    else:
-        # Default response
-        result = {
-            "success": True,
-            "elements": [
-                {"type": "FunctionCall", "semanticHint": "move", "line": 1}
-            ],
-            "metrics": {
-                "loopCount": 0,
-                "conditionCount": 0,
-                "functionCalls": 1,
-                "complexity": 1
-            }
-        }
-        print(json.dumps(result))
+                                            def main():
+                                                code = sys.stdin.read()
+                                                
+                                                # Test simulation - return different responses based on code content
+                                                if "syntax_error" in code:
+                                                    print(json.dumps({"success": False, "error": "SyntaxError: invalid syntax"}))
+                                                elif "empty" in code:
+                                                    print(json.dumps({"success": True, "elements": [], "metrics": {}}))
+                                                elif "simple_move" in code:
+                                                    result = {
+                                                        "success": True,
+                                                        "elements": [
+                                                            {"type": "FunctionCall", "semanticHint": "move", "line": 3, "blockId": "move_001"},
+                                                            {"type": "FunctionCall", "semanticHint": "turn", "line": 4, "blockId": "turn_001"}
+                                                        ],
+                                                        "metrics": {
+                                                            "loopCount": 0,
+                                                            "conditionCount": 0,
+                                                            "functionCalls": 2,
+                                                            "complexity": 2
+                                                        }
+                                                    }
+                                                    print(json.dumps(result))
+                                                elif "with_loop" in code:
+                                                    result = {
+                                                        "success": True,
+                                                        "elements": [
+                                                            {"type": "Loop", "semanticHint": "loop", "line": 3, "blockId": "repeat_001"},
+                                                            {"type": "FunctionCall", "semanticHint": "move", "line": 4, "blockId": "move_001"}
+                                                        ],
+                                                        "metrics": {
+                                                            "loopCount": 1,
+                                                            "conditionCount": 0,
+                                                            "functionCalls": 1,
+                                                            "complexity": 2
+                                                        }
+                                                    }
+                                                    print(json.dumps(result))
+                                                else:
+                                                    # Default response
+                                                    result = {
+                                                        "success": True,
+                                                        "elements": [
+                                                            {"type": "FunctionCall", "semanticHint": "move", "line": 1}
+                                                        ],
+                                                        "metrics": {
+                                                            "loopCount": 0,
+                                                            "conditionCount": 0,
+                                                            "functionCalls": 1,
+                                                            "complexity": 1
+                                                        }
+                                                    }
+                                                    print(json.dumps(result))
 
-if __name__ == "__main__":
-    main()
-""");
-        
+                                            if __name__ == "__main__":
+                                                main()
+                                            """);
+
         // Try to find Python executable
         _pythonPath = FindPythonPath();
-        if (_pythonPath == null)
-        {
-            Assert.Inconclusive("Python not found on system. Skipping AST analyzer tests.");
-        }
+        if (_pythonPath == null) Assert.Inconclusive("Python not found on system. Skipping AST analyzer tests.");
     }
 
     [TearDown]
@@ -98,16 +92,17 @@ if __name__ == "__main__":
     {
         try
         {
-            if (Directory.Exists(_tempSandboxDir))
-            {
-                Directory.Delete(_tempSandboxDir, true);
-            }
+            if (Directory.Exists(_tempSandboxDir)) Directory.Delete(_tempSandboxDir, true);
         }
         catch
         {
             // Ignore cleanup errors
         }
     }
+
+    private Mock<ILogger<InProcessAstAnalyzer>> _mockLogger;
+    private string _tempSandboxDir;
+    private string _pythonPath;
 
     [Test]
     public void Supports_WithPythonLanguage_ReturnsTrue()
@@ -151,7 +146,7 @@ if __name__ == "__main__":
         Assert.That(result.Elements[0].SemanticHint, Is.EqualTo("move"));
         Assert.That(result.Elements[0].Line, Is.EqualTo(3));
         Assert.That(result.Elements[0].BlockId, Is.EqualTo("move_001"));
-        
+
         Assert.That(result.Metrics, Contains.Key("loopCount"));
         Assert.That(result.Metrics["loopCount"], Is.EqualTo(0));
         Assert.That(result.Metrics["functionCalls"], Is.EqualTo(2));
@@ -201,7 +196,7 @@ if __name__ == "__main__":
         var code = "syntax_error test";
 
         // Act & Assert
-        Assert.ThrowsAsync<InvalidOperationException>(async () => 
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await analyzer.ExtractAsync(code));
     }
 
@@ -211,19 +206,19 @@ if __name__ == "__main__":
         // Create a slow ast_extractor
         var slowExtractorPath = Path.Combine(_tempSandboxDir, "ast_extractor_slow.py");
         File.WriteAllText(slowExtractorPath, """
-import sys
-import time
-import json
+                                             import sys
+                                             import time
+                                             import json
 
-def main():
-    time.sleep(2)  # Will timeout
-    result = {"success": True, "elements": []}
-    print(json.dumps(result))
+                                             def main():
+                                                 time.sleep(2)  # Will timeout
+                                                 result = {"success": True, "elements": []}
+                                                 print(json.dumps(result))
 
-if __name__ == "__main__":
-    main()
-""");
-        
+                                             if __name__ == "__main__":
+                                                 main()
+                                             """);
+
         // This test would require modifying the analyzer to use a different script
         // For now, we'll test through the actual extractor with timeout simulation
         Assert.Pass("Test requires analyzer modification to inject script path");
@@ -238,7 +233,7 @@ if __name__ == "__main__":
         var code = "test code";
 
         // Act & Assert
-        Assert.ThrowsAsync<InvalidOperationException>(async () => 
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await analyzer.ExtractAsync(code));
     }
 
@@ -248,9 +243,9 @@ if __name__ == "__main__":
         // Create an ast_extractor that returns invalid JSON
         var invalidExtractorPath = Path.Combine(_tempSandboxDir, "ast_extractor_invalid.py");
         File.WriteAllText(invalidExtractorPath, """
-print("invalid json")
-""");
-        
+                                                print("invalid json")
+                                                """);
+
         // This test would require modifying the analyzer to use a different script
         Assert.Pass("Test requires analyzer modification to inject script path");
     }
@@ -307,23 +302,23 @@ print("invalid json")
         // Create an ast_extractor that returns null metrics
         var nullMetricsPath = Path.Combine(_tempSandboxDir, "ast_extractor_null_metrics.py");
         File.WriteAllText(nullMetricsPath, """
-import sys
-import json
+                                           import sys
+                                           import json
 
-def main():
-    result = {
-        "success": True,
-        "elements": [
-            {"type": "FunctionCall", "semanticHint": "move", "line": 1}
-        ],
-        "metrics": None
-    }
-    print(json.dumps(result))
+                                           def main():
+                                               result = {
+                                                   "success": True,
+                                                   "elements": [
+                                                       {"type": "FunctionCall", "semanticHint": "move", "line": 1}
+                                                   ],
+                                                   "metrics": None
+                                               }
+                                               print(json.dumps(result))
 
-if __name__ == "__main__":
-    main()
-""");
-        
+                                           if __name__ == "__main__":
+                                               main()
+                                           """);
+
         // This test would verify that null metrics are handled
         Assert.Pass("Test requires analyzer modification to inject script path");
     }
@@ -341,10 +336,9 @@ if __name__ == "__main__":
         };
 
         foreach (var path in possiblePaths)
-        {
             try
             {
-                var startInfo = new System.Diagnostics.ProcessStartInfo
+                var startInfo = new ProcessStartInfo
                 {
                     FileName = path,
                     Arguments = "--version",
@@ -354,21 +348,17 @@ if __name__ == "__main__":
                     CreateNoWindow = true
                 };
 
-                using var process = System.Diagnostics.Process.Start(startInfo);
+                using var process = Process.Start(startInfo);
                 if (process != null)
                 {
                     process.WaitForExit(1000);
-                    if (process.ExitCode == 0)
-                    {
-                        return path;
-                    }
+                    if (process.ExitCode == 0) return path;
                 }
             }
             catch
             {
                 // Continue to next path
             }
-        }
 
         return null;
     }

@@ -6,5 +6,8 @@ namespace Learn2Code.Core.DTOs;
 public class WallStateDto : SpriteStateDto
 {
     [JsonConstructor]
-    public WallStateDto() { Type = SpriteType.Wall; }
+    public WallStateDto()
+    {
+        Type = SpriteType.Wall;
+    }
 }

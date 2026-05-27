@@ -1,10 +1,11 @@
 using Learn2Code.Core.DTOs;
+using Learn2Code.Core.Models;
 
 namespace Learn2Code.Core.Mappings;
 
 public static class SceneStateMapper
 {
-    public static SceneStateDto ToDto(Models.SceneState model)
+    public static SceneStateDto ToDto(SceneState model)
     {
         if (model == null) return null!;
 
@@ -14,11 +15,11 @@ public static class SceneStateMapper
         };
     }
 
-    public static Models.SceneState ToModel(SceneStateDto dto)
+    public static SceneState ToModel(SceneStateDto dto)
     {
         if (dto == null) return null!;
 
-        return new Models.SceneState
+        return new SceneState
         {
             Sprites = dto.Sprites.Select(SpriteStateMapper.ToModel).ToList()
         };

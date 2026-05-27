@@ -15,7 +15,7 @@ public class LessonsControllerTests : TestBase
         {
             var teacher = await GetTeacherAsync();
             SetBearerToken(teacher.Token);
-            
+
             var createCourseRequest = new CreateCourseRequest(
                 title,
                 "Description");
@@ -40,7 +40,7 @@ public class LessonsControllerTests : TestBase
         {
             var teacher = await GetTeacherAsync();
             SetBearerToken(teacher.Token);
-            
+
             var createLessonRequest = new CreateLessonRequest(
                 title,
                 "Description",
@@ -65,7 +65,7 @@ public class LessonsControllerTests : TestBase
     {
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
@@ -82,7 +82,7 @@ public class LessonsControllerTests : TestBase
     {
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
@@ -100,7 +100,7 @@ public class LessonsControllerTests : TestBase
     {
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var courseId = await CreateTestCourseAsync();
 
         var request = new CreateLessonRequest(
@@ -123,7 +123,7 @@ public class LessonsControllerTests : TestBase
     {
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
@@ -148,7 +148,7 @@ public class LessonsControllerTests : TestBase
     {
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var courseId = await CreateTestCourseAsync();
 
         var createRequest = new CreateLessonRequest(
@@ -174,7 +174,7 @@ public class LessonsControllerTests : TestBase
         var teacher1 = await GetTeacherAsync();
         SetBearerToken(teacher1.Token);
         var courseId = await CreateTestCourseAsync();
-        
+
         // Try to access with second teacher
         var otherTeacher = await CreateAdditionalTeacherAsync("another@example.com");
         SetBearerToken(otherTeacher.Token);
@@ -191,7 +191,7 @@ public class LessonsControllerTests : TestBase
         SetBearerToken(teacher1.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Try to access with second teacher
         var otherTeacher = await CreateAdditionalTeacherAsync("another2@example.com");
         SetBearerToken(otherTeacher.Token);
@@ -208,7 +208,7 @@ public class LessonsControllerTests : TestBase
         SetBearerToken(teacher1.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Try to update with second teacher
         var otherTeacher = await CreateAdditionalTeacherAsync("another3@example.com");
         SetBearerToken(otherTeacher.Token);
@@ -226,7 +226,7 @@ public class LessonsControllerTests : TestBase
         SetBearerToken(teacher1.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Try to delete with second teacher
         var otherTeacher = await CreateAdditionalTeacherAsync("another4@example.com");
         SetBearerToken(otherTeacher.Token);
@@ -243,7 +243,7 @@ public class LessonsControllerTests : TestBase
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Admin can access
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
@@ -260,7 +260,7 @@ public class LessonsControllerTests : TestBase
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Admin can update
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
@@ -277,7 +277,7 @@ public class LessonsControllerTests : TestBase
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
-        
+
         // Admin creates and deletes lesson
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
@@ -302,7 +302,7 @@ public class LessonsControllerTests : TestBase
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
-        
+
         // Student tries to access (not enrolled)
         var student = await GetStudentAsync();
         SetBearerToken(student.Token);
@@ -318,28 +318,29 @@ public class LessonsControllerTests : TestBase
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
-        
+
         // Create a lesson in the course
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Create a group for the course
-        var groupRequest = new { courseId = courseId, name = "Test Group" };
+        var groupRequest = new { courseId, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var group = await groupResponse.Content.ReadFromJsonAsync<GroupDto>();
         Assert.That(group, Is.Not.Null);
-        
+
         // Create a student and add to group
         var student = await GetStudentAsync();
-        var addStudentResponse = await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
+        var addStudentResponse =
+            await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         // Now test that student can access lessons
         SetBearerToken(student.Token);
         var response = await Client.GetAsync($"/api/lessons?courseId={courseId}");
-        
+
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         var lessons = await response.Content.ReadFromJsonAsync<List<LessonDto>>();
         Assert.That(lessons, Is.Not.Null);
         Assert.That(lessons!.Count, Is.EqualTo(1));
@@ -353,28 +354,29 @@ public class LessonsControllerTests : TestBase
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
-        
+
         // Create a lesson in the course
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Create a group for the course
-        var groupRequest = new { courseId = courseId, name = "Test Group" };
+        var groupRequest = new { courseId, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var group = await groupResponse.Content.ReadFromJsonAsync<GroupDto>();
         Assert.That(group, Is.Not.Null);
-        
+
         // Create a student and add to group
         var student = await GetStudentAsync();
-        var addStudentResponse = await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
+        var addStudentResponse =
+            await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         // Now test that student can get lesson by ID
         SetBearerToken(student.Token);
         var response = await Client.GetAsync($"/api/lessons/{lessonId}");
-        
+
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         var lesson = await response.Content.ReadFromJsonAsync<LessonDto>();
         Assert.That(lesson, Is.Not.Null);
         Assert.That(lesson!.Id, Is.EqualTo(lessonId));
@@ -387,17 +389,17 @@ public class LessonsControllerTests : TestBase
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
-        
+
         // Create a lesson in the course
         var lessonId = await CreateTestLessonAsync(courseId);
-        
+
         // Create a student (not enrolled in any group)
         var student = await GetStudentAsync();
         SetBearerToken(student.Token);
-        
+
         // Student should not be able to access the lesson
         var response = await Client.GetAsync($"/api/lessons/{lessonId}");
-        
+
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
     }
 
@@ -427,7 +429,7 @@ public class LessonsControllerTests : TestBase
     {
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var courseId = await CreateTestCourseAsync();
 
         var invalidRequest = new

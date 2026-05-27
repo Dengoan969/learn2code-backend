@@ -1,11 +1,11 @@
+using System.Security.Claims;
 using Learn2Code.Core.DTOs;
 using Learn2Code.Core.Entities;
 using Learn2Code.Core.Interfaces;
+using Learn2Code.Core.Mappings;
 using Learn2Code.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using Learn2Code.Core.Mappings;
 
 namespace Learn2Code.Api.Controllers;
 
@@ -14,10 +14,10 @@ namespace Learn2Code.Api.Controllers;
 [Authorize]
 public class TasksController : ControllerBase
 {
-    private readonly ITaskRepository _taskRepository;
-    private readonly ISandboxClient _sandboxClient;
     private readonly ICourseRepository _courseRepository;
     private readonly ILessonRepository _lessonRepository;
+    private readonly ISandboxClient _sandboxClient;
+    private readonly ITaskRepository _taskRepository;
 
     public TasksController(
         ITaskRepository taskRepository,
@@ -39,16 +39,16 @@ public class TasksController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (userId == null) return Unauthorized();
-        
+
         var userIdGuid = Guid.Parse(userId);
         IEnumerable<EducationalTask> tasks;
-        
+
         if (lessonId.HasValue)
         {
             tasks = await _taskRepository.GetByLessonIdAsync(lessonId.Value);
-            
+
             // Проверяем доступ к уроку (и его курсу)
             var lessonTasks = tasks.ToList();
             if (lessonTasks.Any())
@@ -56,7 +56,7 @@ public class TasksController : ControllerBase
                 var firstTask = lessonTasks.First();
                 var course = await _courseRepository.GetByIdAsync(firstTask.Lesson.CourseId);
                 if (course == null) return NotFound("Course not found");
-                
+
                 var hasAccess = await CheckCourseAccessAsync(userIdGuid, role, course.Id);
                 if (!hasAccess) return Forbid();
             }
@@ -64,28 +64,23 @@ public class TasksController : ControllerBase
         else
         {
             tasks = await _taskRepository.GetAllAsync();
-            
+
             // Фильтруем задания по доступу к курсам
             var filteredTasks = new List<EducationalTask>();
             foreach (var task in tasks)
             {
                 var course = await _courseRepository.GetByIdAsync(task.Lesson.CourseId);
                 if (course == null) continue;
-                
+
                 var hasAccess = await CheckCourseAccessAsync(userIdGuid, role, course.Id);
-                if (hasAccess)
-                {
-                    filteredTasks.Add(task);
-                }
+                if (hasAccess) filteredTasks.Add(task);
             }
+
             tasks = filteredTasks;
         }
 
         // Если пользователь студент, показываем только опубликованные задания
-        if (role == "Student")
-        {
-            tasks = tasks.Where(t => t.PipelineState == TaskPipelineState.Published);
-        }
+        if (role == "Student") tasks = tasks.Where(t => t.PipelineState == TaskPipelineState.Published);
 
         var dtos = tasks.Select(MapToDto);
         return Ok(dtos);
@@ -103,15 +98,15 @@ public class TasksController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (userId == null) return Unauthorized();
-        
+
         var userIdGuid = Guid.Parse(userId);
-        
+
         // Проверяем доступ к курсу задания
         var course = await _courseRepository.GetByIdAsync(task.Lesson.CourseId);
         if (course == null) return NotFound("Course not found");
-        
+
         var hasAccess = await CheckCourseAccessAsync(userIdGuid, role, course.Id);
         if (!hasAccess) return NotFound();
 
@@ -174,10 +169,10 @@ public class TasksController : ControllerBase
 
         // Выполняем решение без сохранения в БД
         var executionResult = await _sandboxClient.ExecuteAsync(
-            request.Code, 
-            SceneStateMapper.ToModel(request.InitialState), 
+            request.Code,
+            SceneStateMapper.ToModel(request.InitialState),
             TaskConfigMapper.ToModel(request.Config));
-        
+
         return Ok(new TestSolutionResponse(
             SceneStateMapper.ToDto(executionResult.FinalState),
             executionResult.Success,
@@ -208,7 +203,7 @@ public class TasksController : ControllerBase
 
         task.PipelineState = TaskPipelineState.Published;
         await _taskRepository.UpdateAsync(task);
-        
+
         return Ok(MapToDto(task));
     }
 
@@ -229,9 +224,9 @@ public class TasksController : ControllerBase
         task.PipelineState = TaskPipelineState.Draft;
         // Keep solution data for reference, but teacher will need to run preview again
         // before publishing
-        
+
         await _taskRepository.UpdateAsync(task);
-        
+
         return Ok(MapToDto(task));
     }
 
@@ -249,14 +244,14 @@ public class TasksController : ControllerBase
         // Проверяем доступ к курсу задания
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (userId == null) return Unauthorized();
-        
+
         var userIdGuid = Guid.Parse(userId);
-        
+
         var course = await _courseRepository.GetByIdAsync(task.Lesson.CourseId);
         if (course == null) return NotFound("Course not found");
-        
+
         var hasAccess = await CheckCourseAccessAsync(userIdGuid, role, course.Id);
         if (!hasAccess) return NotFound();
 
@@ -268,14 +263,29 @@ public class TasksController : ControllerBase
         if (request.Order.HasValue) task.Order = request.Order.Value;
         if (request.Config != null) task.Config = TaskConfigMapper.ToModel(request.Config);
         if (request.InitialState != null) task.InitialState = SceneStateMapper.ToModel(request.InitialState);
-        
+
         if (request.InitialState != null || !string.IsNullOrEmpty(request.SolutionCode))
         {
             var executionResult = await _sandboxClient.ExecuteAsync(
                 request.SolutionCode ?? task.SolutionCode ?? "", task.InitialState, task.Config);
-            
+
+            // Debug output
+            Console.WriteLine($"[DEBUG Update] Execution success: {executionResult.Success}");
             if (!executionResult.Success)
+            {
+                Console.WriteLine($"[DEBUG Update] Execution error: {executionResult.Error}");
                 return BadRequest($"Solution execution failed: {executionResult.Error}");
+            }
+
+            Console.WriteLine(
+                $"[DEBUG Update] Final state sprites count: {executionResult.FinalState?.Sprites?.Count ?? 0}");
+            if (executionResult.FinalState?.Sprites?.Count > 0)
+            {
+                var cat = executionResult.FinalState.Sprites.OfType<CatState>().FirstOrDefault();
+                if (cat != null)
+                    Console.WriteLine(
+                        $"[DEBUG Update] Cat final: X={cat.X}, Y={cat.Y}, Direction={cat.Direction}, Width={cat.Width}, Height={cat.Height}");
+            }
 
             task.SolutionCode = request.SolutionCode;
             task.SolutionTrace = executionResult.Trace;
@@ -306,21 +316,18 @@ public class TasksController : ControllerBase
     private async Task<bool> CheckCourseAccessAsync(Guid userId, string? role, Guid courseId)
     {
         if (role == "Admin") return true;
-        
+
         var course = await _courseRepository.GetByIdAsync(courseId);
         if (course == null) return false;
-        
-        if (role == "Teacher")
-        {
-            return course.TeacherId == userId;
-        }
-        
+
+        if (role == "Teacher") return course.TeacherId == userId;
+
         if (role == "Student")
         {
             var studentCourses = await _courseRepository.GetByStudentIdAsync(userId);
             return studentCourses.Any(c => c.Id == courseId);
         }
-        
+
         return false;
     }
 

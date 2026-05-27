@@ -71,11 +71,11 @@ public class GroupsController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             if (userId == null) return Forbid();
-            
+
             if (string.Equals(role, "Teacher", StringComparison.OrdinalIgnoreCase))
             {
                 if (group.TeacherId != Guid.Parse(userId)) return Forbid();
@@ -148,7 +148,8 @@ public class GroupsController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) && (userId == null || group.TeacherId != Guid.Parse(userId)))
+        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) &&
+            (userId == null || group.TeacherId != Guid.Parse(userId)))
             return Forbid();
 
         if (request.Name != null) group.Name = request.Name;
@@ -178,7 +179,8 @@ public class GroupsController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) && (userId == null || group.TeacherId != Guid.Parse(userId)))
+        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) &&
+            (userId == null || group.TeacherId != Guid.Parse(userId)))
             return Forbid();
 
         await _groupRepository.DeleteAsync(id);
@@ -250,11 +252,11 @@ public class GroupsController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             if (userId == null) return Forbid();
-            
+
             if (string.Equals(role, "Teacher", StringComparison.OrdinalIgnoreCase))
             {
                 if (group.TeacherId != Guid.Parse(userId)) return Forbid();

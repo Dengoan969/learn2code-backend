@@ -34,7 +34,7 @@ public class CoursesController : ControllerBase
         if (userId == null) return Unauthorized();
 
         var userIdGuid = Guid.Parse(userId);
-        IEnumerable<Course> courses = role switch
+        var courses = role switch
         {
             "Admin" => await _courseRepository.GetAllAsync(),
             "Teacher" => await _courseRepository.GetByTeacherIdAsync(userIdGuid),
@@ -57,11 +57,11 @@ public class CoursesController : ControllerBase
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        
+
         if (userId == null) return Unauthorized();
-        
+
         var userIdGuid = Guid.Parse(userId);
-        
+
         // Проверяем доступ в зависимости от роли
         var hasAccess = role switch
         {

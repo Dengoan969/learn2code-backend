@@ -13,7 +13,7 @@ public class AuthenticationTests : TestBase
     {
         // Ensure admin user exists before testing login
         await GetAdminAsync();
-        
+
         var loginRequest = new LoginRequest("admin", "admin123");
         var response = await Client.PostAsJsonAsync("/api/auth/login", loginRequest);
 
@@ -32,7 +32,7 @@ public class AuthenticationTests : TestBase
     {
         // Ensure admin user exists before testing wrong password
         await GetAdminAsync();
-        
+
         var loginRequest = new LoginRequest("admin", "wrongpassword");
         var response = await Client.PostAsJsonAsync("/api/auth/login", loginRequest);
 

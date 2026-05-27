@@ -3,10 +3,10 @@ using System.Text.Json;
 using Learn2Code.Core.DTOs;
 using Learn2Code.Core.Entities;
 using Learn2Code.Core.Interfaces;
-using Learn2Code.Core.Models;
 using Learn2Code.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using JsonOptions = Learn2Code.Core.JsonOptions;
 
 namespace Learn2Code.Api.Controllers;
 
@@ -185,7 +185,7 @@ public class SubmissionsController : ControllerBase
         if (string.IsNullOrEmpty(json)) return null;
         try
         {
-            return JsonSerializer.Deserialize<CheckResultDto>(json, Learn2Code.Core.JsonOptions.Default);
+            return JsonSerializer.Deserialize<CheckResultDto>(json, JsonOptions.Default);
         }
         catch
         {

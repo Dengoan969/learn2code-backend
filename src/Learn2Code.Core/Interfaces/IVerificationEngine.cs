@@ -11,5 +11,6 @@ public interface IVerificationEngine
         NormalizedProgram reference,
         ExecutionResult execution,
         SceneState expectedState,
-        TaskConfig config);
+        TaskConfig config,
+        ExecutionTrace solutionTrace);
 }

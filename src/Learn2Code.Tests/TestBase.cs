@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Learn2Code.Core.DTOs;
 using Learn2Code.Core.Entities;
 using Learn2Code.Infrastructure.Data;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Learn2Code.Tests;
 
@@ -16,22 +18,21 @@ public record TestUser(string Token, Guid Id, string Login, UserRole Role);
 [TestFixture]
 public abstract class TestBase : IDisposable
 {
-    protected static readonly System.Text.Json.JsonSerializerOptions JsonOptions = Learn2Code.Core.JsonOptions.Default;
-
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
         _testDbName = $"test_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
-        
+
         // Create test database connection string
-        var baseConnectionString = "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres;Include Error Detail=true";
+        var baseConnectionString =
+            "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres;Include Error Detail=true";
         _testConnectionString = baseConnectionString.Replace("Database=postgres", $"Database={_testDbName}");
 
         // First, create the test database using the default postgres database
-        using (var connection = new Npgsql.NpgsqlConnection(baseConnectionString))
+        using (var connection = new NpgsqlConnection(baseConnectionString))
         {
             connection.Open();
-            using (var command = new Npgsql.NpgsqlCommand($"CREATE DATABASE {_testDbName}", connection))
+            using (var command = new NpgsqlCommand($"CREATE DATABASE {_testDbName}", connection))
             {
                 command.ExecuteNonQuery();
             }
@@ -71,14 +72,6 @@ public abstract class TestBase : IDisposable
         Client = Factory.CreateClient();
     }
 
-    private AppDbContext CreateDbContext()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(_testConnectionString)
-            .Options;
-        return new AppDbContext(options);
-    }
-
     [OneTimeTearDown]
     public void OneTimeTearDown()
     {
@@ -88,7 +81,7 @@ public abstract class TestBase : IDisposable
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             dbContext.Database.EnsureDeleted();
         }
-        
+
         Dispose();
     }
 
@@ -96,14 +89,14 @@ public abstract class TestBase : IDisposable
     public async Task SetUp()
     {
         ClearAuthorization();
-        
+
         // Clear cached users since we're about to delete data
         _cachedAdmin = null;
         _cachedTeacher = null;
         _cachedStudent = null;
         _additionalTeachers.Clear();
         _additionalStudents.Clear();
-        
+
         // Clear all data between tests
         using (var scope = Factory.Services.CreateScope())
         {
@@ -119,9 +112,19 @@ public abstract class TestBase : IDisposable
             dbContext.Groups.RemoveRange(dbContext.Groups);
             dbContext.Courses.RemoveRange(dbContext.Courses);
             dbContext.Users.RemoveRange(dbContext.Users);
-                
+
             await dbContext.SaveChangesAsync();
         }
+    }
+
+    protected static readonly JsonSerializerOptions JsonOptions = Core.JsonOptions.Default;
+
+    private AppDbContext CreateDbContext()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(_testConnectionString)
+            .Options;
+        return new AppDbContext(options);
     }
 
     protected WebApplicationFactory<Program> Factory { get; private set; } = null!;
@@ -144,14 +147,14 @@ public abstract class TestBase : IDisposable
 
         var loginRequest = new LoginRequest("admin", "admin123");
         var response = await Client.PostAsJsonAsync("/api/auth/login", loginRequest);
-        
+
         response.EnsureSuccessStatusCode();
-        
+
         var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
         var token = loginResponse?.Token ?? throw new InvalidOperationException("Token not found");
 
         var adminId = await GetUserIdFromTokenAsync(token);
-        
+
         // Verify the admin user exists in the database
         using (var scope = Factory.Services.CreateScope())
         {
@@ -223,12 +226,9 @@ public abstract class TestBase : IDisposable
         // Check if admin already exists
         var existingAdmin = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Login == "admin");
-        
-        if (existingAdmin != null)
-        {
-            return;
-        }
-        
+
+        if (existingAdmin != null) return;
+
         // Create admin user
         var admin = new User
         {

@@ -51,7 +51,7 @@ public class SubmissionRepository : ISubmissionRepository
     {
         return await _context.Submissions
             .FirstOrDefaultAsync(s => s.TaskId == taskId &&
-                                     s.StudentId == studentId &&
-                                     s.IsDraft);
+                                      s.StudentId == studentId &&
+                                      s.IsDraft);
     }
 }

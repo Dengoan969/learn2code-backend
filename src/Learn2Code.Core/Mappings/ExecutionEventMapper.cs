@@ -8,7 +8,7 @@ public static class ExecutionEventMapper
     public static ExecutionEventDto ToDto(ExecutionEvent model)
     {
         if (model == null) return null!;
-        
+
         return new ExecutionEventDto
         {
             Step = model.Step,
@@ -20,7 +20,7 @@ public static class ExecutionEventMapper
     public static ExecutionEvent ToModel(ExecutionEventDto dto)
     {
         if (dto == null) return null!;
-        
+
         return new ExecutionEvent
         {
             Step = dto.Step,

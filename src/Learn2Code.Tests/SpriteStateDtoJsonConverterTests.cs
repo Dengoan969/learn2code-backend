@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Learn2Code.Core;
 using Learn2Code.Core.DTOs;
 
 namespace Learn2Code.Tests;
@@ -6,13 +7,13 @@ namespace Learn2Code.Tests;
 [TestFixture]
 public class SpriteStateDtoJsonConverterTests
 {
-    private JsonSerializerOptions _options;
-
     [SetUp]
     public void SetUp()
     {
-        _options = Core.JsonOptions.Default;
+        _options = JsonOptions.Default;
     }
+
+    private JsonSerializerOptions _options;
 
     [Test]
     public void Serialize_Deserialize_CatStateDto_RoundTrip()
@@ -20,8 +21,10 @@ public class SpriteStateDtoJsonConverterTests
         // Arrange
         var original = new CatStateDto
         {
-            GridX = 10,
-            GridY = 20,
+            X = 500.0, // 10 * 50px
+            Y = 1000.0, // 20 * 50px
+            Width = 50.0,
+            Height = 50.0,
             Visible = true,
             Direction = 45.0,
             Costume = "cat_costume",
@@ -36,8 +39,10 @@ public class SpriteStateDtoJsonConverterTests
         // Assert
         Assert.That(deserialized, Is.InstanceOf<CatStateDto>());
         var cat = (CatStateDto)deserialized!;
-        Assert.That(cat.GridX, Is.EqualTo(original.GridX));
-        Assert.That(cat.GridY, Is.EqualTo(original.GridY));
+        Assert.That(cat.X, Is.EqualTo(original.X));
+        Assert.That(cat.Y, Is.EqualTo(original.Y));
+        Assert.That(cat.Width, Is.EqualTo(original.Width));
+        Assert.That(cat.Height, Is.EqualTo(original.Height));
         Assert.That(cat.Visible, Is.EqualTo(original.Visible));
         Assert.That(cat.Direction, Is.EqualTo(original.Direction));
         Assert.That(cat.Costume, Is.EqualTo(original.Costume));
@@ -53,8 +58,10 @@ public class SpriteStateDtoJsonConverterTests
         // Arrange
         var original = new AppleStateDto
         {
-            GridX = 5,
-            GridY = 15,
+            X = 250.0, // 5 * 50px
+            Y = 750.0, // 15 * 50px
+            Width = 50.0,
+            Height = 50.0,
             Visible = false
         };
 
@@ -65,8 +72,10 @@ public class SpriteStateDtoJsonConverterTests
         // Assert
         Assert.That(deserialized, Is.InstanceOf<AppleStateDto>());
         var apple = (AppleStateDto)deserialized!;
-        Assert.That(apple.GridX, Is.EqualTo(original.GridX));
-        Assert.That(apple.GridY, Is.EqualTo(original.GridY));
+        Assert.That(apple.X, Is.EqualTo(original.X));
+        Assert.That(apple.Y, Is.EqualTo(original.Y));
+        Assert.That(apple.Width, Is.EqualTo(original.Width));
+        Assert.That(apple.Height, Is.EqualTo(original.Height));
         Assert.That(apple.Visible, Is.EqualTo(original.Visible));
     }
 
@@ -76,8 +85,10 @@ public class SpriteStateDtoJsonConverterTests
         // Arrange
         var original = new WallStateDto
         {
-            GridX = 0,
-            GridY = 0,
+            X = 0.0,
+            Y = 0.0,
+            Width = 50.0,
+            Height = 50.0,
             Visible = true
         };
 
@@ -88,8 +99,10 @@ public class SpriteStateDtoJsonConverterTests
         // Assert
         Assert.That(deserialized, Is.InstanceOf<WallStateDto>());
         var wall = (WallStateDto)deserialized!;
-        Assert.That(wall.GridX, Is.EqualTo(original.GridX));
-        Assert.That(wall.GridY, Is.EqualTo(original.GridY));
+        Assert.That(wall.X, Is.EqualTo(original.X));
+        Assert.That(wall.Y, Is.EqualTo(original.Y));
+        Assert.That(wall.Width, Is.EqualTo(original.Width));
+        Assert.That(wall.Height, Is.EqualTo(original.Height));
         Assert.That(wall.Visible, Is.EqualTo(original.Visible));
     }
 
@@ -144,7 +157,7 @@ public class SpriteStateDtoJsonConverterTests
         }";
 
         // Act & Assert
-        Assert.Throws<JsonException>(() => 
+        Assert.Throws<JsonException>(() =>
             JsonSerializer.Deserialize<SpriteStateDto>(json, _options));
     }
 
@@ -159,7 +172,7 @@ public class SpriteStateDtoJsonConverterTests
         }";
 
         // Act & Assert
-        Assert.Throws<JsonException>(() => 
+        Assert.Throws<JsonException>(() =>
             JsonSerializer.Deserialize<SpriteStateDto>(json, _options));
     }
 
@@ -167,7 +180,7 @@ public class SpriteStateDtoJsonConverterTests
     public void Serialize_IncludesTypeField()
     {
         // Arrange
-        var cat = new CatStateDto { GridX = 10, GridY = 20 };
+        var cat = new CatStateDto { X = 10, Y = 20 };
 
         // Act
         var json = JsonSerializer.Serialize(cat, _options);
@@ -184,9 +197,9 @@ public class SpriteStateDtoJsonConverterTests
     {
         // Arrange
         var scene = new SceneStateDto(
-            new CatStateDto { GridX = 10, GridY = 20 },
-            new AppleStateDto { GridX = 30, GridY = 40 },
-            new WallStateDto { GridX = 50, GridY = 60 }
+            new CatStateDto { X = 10, Y = 20 },
+            new AppleStateDto { X = 30, Y = 40 },
+            new WallStateDto { X = 50, Y = 60 }
         );
 
         // Act

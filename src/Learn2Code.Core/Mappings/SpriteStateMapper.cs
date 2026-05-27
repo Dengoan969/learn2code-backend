@@ -14,8 +14,10 @@ public static class SpriteStateMapper
             CatState cat => new CatStateDto
             {
                 Type = cat.Type,
-                GridX = cat.GridX,
-                GridY = cat.GridY,
+                X = cat.X,
+                Y = cat.Y,
+                Width = cat.Width,
+                Height = cat.Height,
                 Visible = cat.Visible,
                 Direction = cat.Direction,
                 Costume = cat.Costume,
@@ -25,15 +27,19 @@ public static class SpriteStateMapper
             AppleState apple => new AppleStateDto
             {
                 Type = apple.Type,
-                GridX = apple.GridX,
-                GridY = apple.GridY,
+                X = apple.X,
+                Y = apple.Y,
+                Width = apple.Width,
+                Height = apple.Height,
                 Visible = apple.Visible
             },
             WallState wall => new WallStateDto
             {
                 Type = wall.Type,
-                GridX = wall.GridX,
-                GridY = wall.GridY,
+                X = wall.X,
+                Y = wall.Y,
+                Width = wall.Width,
+                Height = wall.Height,
                 Visible = wall.Visible
             },
             _ => throw new ArgumentException($"Unknown sprite type: {model.GetType().Name}")
@@ -49,8 +55,10 @@ public static class SpriteStateMapper
             CatStateDto cat => new CatState
             {
                 Type = cat.Type,
-                GridX = cat.GridX,
-                GridY = cat.GridY,
+                X = cat.X,
+                Y = cat.Y,
+                Width = cat.Width,
+                Height = cat.Height,
                 Visible = cat.Visible,
                 Direction = cat.Direction,
                 Costume = cat.Costume,
@@ -60,15 +68,19 @@ public static class SpriteStateMapper
             AppleStateDto apple => new AppleState
             {
                 Type = apple.Type,
-                GridX = apple.GridX,
-                GridY = apple.GridY,
+                X = apple.X,
+                Y = apple.Y,
+                Width = apple.Width,
+                Height = apple.Height,
                 Visible = apple.Visible
             },
             WallStateDto wall => new WallState
             {
                 Type = wall.Type,
-                GridX = wall.GridX,
-                GridY = wall.GridY,
+                X = wall.X,
+                Y = wall.Y,
+                Width = wall.Width,
+                Height = wall.Height,
                 Visible = wall.Visible
             },
             _ => throw new ArgumentException($"Unknown sprite DTO type: {dto.GetType().Name}")

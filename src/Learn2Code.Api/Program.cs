@@ -1,5 +1,6 @@
 using System.Text;
 using Learn2Code.Api.Middleware;
+using Learn2Code.Core;
 using Learn2Code.Core.Entities;
 using Learn2Code.Infrastructure.Data;
 using Learn2Code.Infrastructure.DI;
@@ -42,18 +43,15 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         // Use centralized JsonOptions from Core project
-        var defaultOptions = Learn2Code.Core.JsonOptions.Default;
+        var defaultOptions = JsonOptions.Default;
         options.JsonSerializerOptions.ReferenceHandler = defaultOptions.ReferenceHandler;
         options.JsonSerializerOptions.DefaultIgnoreCondition = defaultOptions.DefaultIgnoreCondition;
         options.JsonSerializerOptions.PropertyNamingPolicy = defaultOptions.PropertyNamingPolicy;
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = defaultOptions.PropertyNameCaseInsensitive;
-        
+
         // Copy converters
         options.JsonSerializerOptions.Converters.Clear();
-        foreach (var converter in defaultOptions.Converters)
-        {
-            options.JsonSerializerOptions.Converters.Add(converter);
-        }
+        foreach (var converter in defaultOptions.Converters) options.JsonSerializerOptions.Converters.Add(converter);
     });
 builder.Services.AddEndpointsApiExplorer();
 
@@ -70,13 +68,10 @@ builder.Services.AddCors(options =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 if (!string.IsNullOrEmpty(connectionString))
-{
     builder.Services.RegisterInfrastructure(connectionString);
-}
 else
-{
-    throw new InvalidOperationException("Database connection string is not configured. Please set 'ConnectionStrings:DefaultConnection' in appsettings.json");
-}
+    throw new InvalidOperationException(
+        "Database connection string is not configured. Please set 'ConnectionStrings:DefaultConnection' in appsettings.json");
 
 var sandboxDir = builder.Configuration["Python:SandboxDir"] ?? "src/sandbox";
 if (!Path.IsPathRooted(sandboxDir))
@@ -155,11 +150,10 @@ var skipSeed = builder.Configuration.GetValue<bool>("Database:SkipSeed") ||
                Environment.GetEnvironmentVariable("SKIP_SEED") == "true";
 
 if (!skipSeed)
-{
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        
+
         try
         {
             db.Database.EnsureCreated();
@@ -251,14 +245,11 @@ if (!skipSeed)
         catch (Exception ex)
         {
             Console.WriteLine($"Seed: Error during seeding: {ex.Message}");
-            Console.WriteLine($"Seed: Continuing without seed data");
+            Console.WriteLine("Seed: Continuing without seed data");
         }
     }
-}
 else
-{
     Console.WriteLine("Seed: Skipping seed data (Database:SkipSeed = true or SKIP_SEED=true)");
-}
 
 app.Run();
 

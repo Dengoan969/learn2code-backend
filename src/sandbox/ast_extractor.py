@@ -63,35 +63,56 @@ def get_semantic(node):
     return None
 
 
+def evaluate_ast_node(node):
+    """Evaluate simple AST node to a value."""
+    if isinstance(node, ast.Constant):
+        return node.value
+    elif isinstance(node, ast.Num):  # Python 3.7 compatibility
+        return node.n
+    elif isinstance(node, ast.Str):
+        return node.s
+    elif isinstance(node, ast.Name):
+        return node.id
+    elif isinstance(node, ast.UnaryOp):
+        # Handle unary operations like -90
+        operand = evaluate_ast_node(node.operand)
+        if isinstance(node.op, ast.USub):
+            return -operand
+        elif isinstance(node.op, ast.UAdd):
+            return +operand
+        elif isinstance(node.op, ast.Not):
+            return not operand
+        else:
+            return str(node)
+    elif isinstance(node, ast.BinOp):
+        # Handle simple binary operations (limited support)
+        left = evaluate_ast_node(node.left)
+        right = evaluate_ast_node(node.right)
+        if isinstance(node.op, ast.Add):
+            return left + right
+        elif isinstance(node.op, ast.Sub):
+            return left - right
+        elif isinstance(node.op, ast.Mult):
+            return left * right
+        elif isinstance(node.op, ast.Div):
+            return left / right
+        else:
+            return str(node)
+    else:
+        return str(node)
+
+
 def extract_parameters(node):
     """Extract parameters from AST node."""
     params = {}
     if isinstance(node, ast.Call):
         # Extract positional arguments
         for i, arg in enumerate(node.args):
-            if isinstance(arg, ast.Constant):
-                params[f"arg{i}"] = arg.value
-            elif isinstance(arg, ast.Name):
-                params[f"arg{i}"] = arg.id
-            elif isinstance(arg, ast.Num):  # Python 3.7 compatibility
-                params[f"arg{i}"] = arg.n
-            elif isinstance(arg, ast.Str):
-                params[f"arg{i}"] = arg.s
-            else:
-                params[f"arg{i}"] = str(arg)
+            params[f"arg{i}"] = evaluate_ast_node(arg)
         # Extract keyword arguments
         for kw in node.keywords:
             key = kw.arg or "unnamed"
-            if isinstance(kw.value, ast.Constant):
-                params[key] = kw.value.value
-            elif isinstance(kw.value, ast.Name):
-                params[key] = kw.value.id
-            elif isinstance(kw.value, ast.Num):
-                params[key] = kw.value.n
-            elif isinstance(kw.value, ast.Str):
-                params[key] = kw.value.s
-            else:
-                params[key] = str(kw.value)
+            params[key] = evaluate_ast_node(kw.value)
     elif isinstance(node, (ast.If, ast.IfExp)):
         params["condition"] = "expression"
     elif isinstance(node, (ast.For, ast.While)):
@@ -115,7 +136,10 @@ def extract_normalized_ast(code: str) -> dict:
     }
 
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.Expr, ast.Load, ast.Constant, ast.Name, ast.Attribute)):
+        # Skip nodes that are not meaningful as separate elements
+        if isinstance(node, (ast.Module, ast.Expr, ast.Load, ast.Constant,
+                           ast.Name, ast.Attribute, ast.UnaryOp, ast.BinOp,
+                           ast.Compare, ast.BoolOp)):
             continue
 
         line = getattr(node, 'lineno', 0)

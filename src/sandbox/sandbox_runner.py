@@ -7,7 +7,7 @@ import sys
 import json
 from edu_stage import execute_student_code
 from sprite_state import SceneState, SpriteState, CatState, AppleState, WallState, SpriteType
-from task_config import TaskConfig, CheckLevel
+from task_config import TaskConfig
 from execution_trace import ExecutionTrace
 
 def dict_to_scene_state(data: dict) -> SceneState:
@@ -18,11 +18,20 @@ def dict_to_scene_state(data: dict) -> SceneState:
     
     for sprite_dict in data["sprites"]:
         sprite_type = sprite_dict.get("type")
+        # Общие поля для всех спрайтов
+        x = sprite_dict.get("x", 0.0)
+        y = sprite_dict.get("y", 0.0)
+        width = sprite_dict.get("width", 50.0)
+        height = sprite_dict.get("height", 50.0)
+        visible = sprite_dict.get("visible", True)
+        
         if sprite_type == SpriteType.CAT.value:
             sprite = CatState(
                 type=SpriteType.CAT,
-                grid_x=sprite_dict.get("gridX", 0),
-                grid_y=sprite_dict.get("gridY", 0),
+                x=x,
+                y=y,
+                width=width,
+                height=height,
                 direction=sprite_dict.get("direction", 90.0),
                 costume=sprite_dict.get("costume", "default"),
                 said_texts=sprite_dict.get("saidTexts", {}),
@@ -31,18 +40,22 @@ def dict_to_scene_state(data: dict) -> SceneState:
         elif sprite_type == SpriteType.APPLE.value:
             sprite = AppleState(
                 type=SpriteType.APPLE,
-                grid_x=sprite_dict.get("gridX", 0),
-                grid_y=sprite_dict.get("gridY", 0)
+                x=x,
+                y=y,
+                width=width,
+                height=height
             )
         elif sprite_type == SpriteType.WALL.value:
             sprite = WallState(
                 type=SpriteType.WALL,
-                grid_x=sprite_dict.get("gridX", 0),
-                grid_y=sprite_dict.get("gridY", 0)
+                x=x,
+                y=y,
+                width=width,
+                height=height
             )
         else:
             continue
-        sprite.visible = sprite_dict.get("visible", True)
+        sprite.visible = visible
         scene.sprites.append(sprite)
     
     return scene
@@ -52,21 +65,11 @@ def dict_to_task_config(data: dict) -> TaskConfig:
     if not data:
         return TaskConfig()
     
-    # Handle CheckLevel enum
-    level_str = data.get("level", "Normal")
-    level = CheckLevel.Normal
-    try:
-        level = CheckLevel(level_str)
-    except (ValueError, KeyError):
-        # If invalid, default to Normal
-        pass
-    
+    # Используем новые имена полей
     return TaskConfig(
-        grid_width=data.get("gridWidth", 20),
-        grid_height=data.get("gridHeight", 20),
-        tolerance_px=data.get("tolerancePx", 5.0),
-        min_trace_ratio=data.get("minTraceRatio", 0.7),
-        level=level
+        scene_width=data.get("sceneWidth", 1000.0),
+        scene_height=data.get("sceneHeight", 1000.0)
+        # tolerance_px, min_trace_ratio, level игнорируются - не используются в Python
     )
 
 def scene_state_to_dict(scene: SceneState) -> dict:
@@ -75,8 +78,10 @@ def scene_state_to_dict(scene: SceneState) -> dict:
     for sprite in scene.sprites:
         sprite_dict = {
             "type": sprite.type.value,
-            "gridX": sprite.grid_x,
-            "gridY": sprite.grid_y,
+            "x": sprite.x,
+            "y": sprite.y,
+            "width": sprite.width,
+            "height": sprite.height,
             "visible": sprite.visible
         }
         if isinstance(sprite, CatState):

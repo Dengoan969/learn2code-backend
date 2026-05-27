@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Learn2Code.Core.DTOs;
-using Microsoft.Extensions.DependencyInjection;
 using Learn2Code.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Learn2Code.Tests;
 
@@ -63,7 +64,7 @@ public class CoursesControllerTests : TestBase
         var response = await Client.GetAsync("/api/courses");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         var courses = await response.Content.ReadFromJsonAsync<List<CourseDto>>();
         Assert.That(courses, Is.Not.Null);
         Assert.That(courses!.Count, Is.EqualTo(0));
@@ -75,31 +76,32 @@ public class CoursesControllerTests : TestBase
         // Create a teacher and course
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var createRequest = new CreateCourseRequest("Test Course", "Course Description");
         var createResponse = await Client.PostAsJsonAsync("/api/courses", createRequest);
         Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var course = await createResponse.Content.ReadFromJsonAsync<CourseDto>();
         Assert.That(course, Is.Not.Null);
-        
+
         // Create a group for the course
         var groupRequest = new { courseId = course!.Id, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var group = await groupResponse.Content.ReadFromJsonAsync<GroupDto>();
         Assert.That(group, Is.Not.Null);
-        
+
         // Create a student and add to group
         var student = await GetStudentAsync();
-        var addStudentResponse = await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
+        var addStudentResponse =
+            await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         // Now test that student can see the course
         SetBearerToken(student.Token);
         var getResponse = await Client.GetAsync("/api/courses");
-        
+
         Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         var courses = await getResponse.Content.ReadFromJsonAsync<List<CourseDto>>();
         Assert.That(courses, Is.Not.Null);
         Assert.That(courses!.Count, Is.EqualTo(1));
@@ -113,31 +115,32 @@ public class CoursesControllerTests : TestBase
         // Create a teacher and course
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var createRequest = new CreateCourseRequest("Test Course", "Course Description");
         var createResponse = await Client.PostAsJsonAsync("/api/courses", createRequest);
         Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var course = await createResponse.Content.ReadFromJsonAsync<CourseDto>();
         Assert.That(course, Is.Not.Null);
-        
+
         // Create a group for the course
         var groupRequest = new { courseId = course!.Id, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var group = await groupResponse.Content.ReadFromJsonAsync<GroupDto>();
         Assert.That(group, Is.Not.Null);
-        
+
         // Create a student and add to group
         var student = await GetStudentAsync();
-        var addStudentResponse = await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
+        var addStudentResponse =
+            await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         // Now test that student can get the course by ID
         SetBearerToken(student.Token);
         var getResponse = await Client.GetAsync($"/api/courses/{course.Id}");
-        
+
         Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        
+
         var retrievedCourse = await getResponse.Content.ReadFromJsonAsync<CourseDto>();
         Assert.That(retrievedCourse, Is.Not.Null);
         Assert.That(retrievedCourse!.Id, Is.EqualTo(course.Id));
@@ -150,20 +153,20 @@ public class CoursesControllerTests : TestBase
         // Create a teacher and course
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
-        
+
         var createRequest = new CreateCourseRequest("Test Course", "Course Description");
         var createResponse = await Client.PostAsJsonAsync("/api/courses", createRequest);
         Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var course = await createResponse.Content.ReadFromJsonAsync<CourseDto>();
         Assert.That(course, Is.Not.Null);
-        
+
         // Create a student (not enrolled in any group)
         var student = await GetStudentAsync();
         SetBearerToken(student.Token);
-        
+
         // Student should not be able to access the course
         var getResponse = await Client.GetAsync($"/api/courses/{course!.Id}");
-        
+
         Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
     }
 
@@ -191,7 +194,7 @@ public class CoursesControllerTests : TestBase
     {
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
-        
+
         // Debug: verify admin user exists in database before creating course
         using (var scope = Factory.Services.CreateScope())
         {
@@ -202,10 +205,7 @@ public class CoursesControllerTests : TestBase
             {
                 Console.WriteLine("DEBUG: Admin user not found! Listing all users:");
                 var allUsers = await dbContext.Users.ToListAsync();
-                foreach (var user in allUsers)
-                {
-                    Console.WriteLine($"  - {user.Login} ({user.Id})");
-                }
+                foreach (var user in allUsers) Console.WriteLine($"  - {user.Login} ({user.Id})");
             }
             else
             {
@@ -235,15 +235,13 @@ public class CoursesControllerTests : TestBase
             var content = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"DEBUG: Response status: {response.StatusCode}");
             Console.WriteLine($"DEBUG: Response content: {content}");
-            
+
             // Try to get more details about the error
             try
             {
-                var errorObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(content);
+                var errorObj = JsonSerializer.Deserialize<Dictionary<string, object>>(content);
                 if (errorObj != null && errorObj.ContainsKey("message"))
-                {
                     Console.WriteLine($"DEBUG: Error message: {errorObj["message"]}");
-                }
             }
             catch (Exception ex)
             {

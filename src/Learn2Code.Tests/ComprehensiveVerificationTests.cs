@@ -1,3 +1,4 @@
+﻿using System.Diagnostics;
 using Learn2Code.Core.Enums;
 using Learn2Code.Core.Models;
 using Learn2Code.Services;
@@ -10,31 +11,23 @@ namespace Learn2Code.Tests;
 [Parallelizable]
 public class ComprehensiveVerificationTests
 {
-    private Mock<ILogger<InProcessSandboxClient>> _mockSandboxLogger;
-    private Mock<ILogger<InProcessAstAnalyzer>> _mockAnalyzerLogger;
-    private string _tempSandboxDir;
-    private string _pythonPath;
-    private InProcessAstAnalyzer _analyzer;
-    private InProcessSandboxClient _sandboxClient;
-    private CoreComparisonEngine _verificationEngine;
-
     [SetUp]
     public void SetUp()
     {
         _mockSandboxLogger = new Mock<ILogger<InProcessSandboxClient>>();
         _mockAnalyzerLogger = new Mock<ILogger<InProcessAstAnalyzer>>();
-        
+
         // Debug: log current directory
         Console.WriteLine($"SetUp: Current directory = {Directory.GetCurrentDirectory()}");
-        
+
         // Create temporary sandbox directory
         _tempSandboxDir = Path.Combine(Path.GetTempPath(), $"sandbox_comprehensive_{Guid.NewGuid()}");
         Directory.CreateDirectory(_tempSandboxDir);
         Console.WriteLine($"SetUp: Temp sandbox dir = {_tempSandboxDir}");
-        
+
         // Copy actual sandbox files for testing
         CopySandboxFiles();
-        
+
         // Find Python executable
         _pythonPath = FindPythonPath();
         if (_pythonPath == null)
@@ -42,9 +35,9 @@ public class ComprehensiveVerificationTests
             Assert.Inconclusive("Python not found on system. Skipping comprehensive tests.");
             return;
         }
-        
+
         Console.WriteLine($"SetUp: Python path = {_pythonPath}");
-        
+
         // Initialize real components
         _analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockAnalyzerLogger.Object);
         _sandboxClient = new InProcessSandboxClient(_pythonPath, _tempSandboxDir, _mockSandboxLogger.Object);
@@ -65,36 +58,45 @@ public class ComprehensiveVerificationTests
         }
     }
 
+    private Mock<ILogger<InProcessSandboxClient>> _mockSandboxLogger;
+    private Mock<ILogger<InProcessAstAnalyzer>> _mockAnalyzerLogger;
+    private string _tempSandboxDir;
+    private string _pythonPath;
+    private InProcessAstAnalyzer _analyzer;
+    private InProcessSandboxClient _sandboxClient;
+    private CoreComparisonEngine _verificationEngine;
+
     private void CopySandboxFiles()
     {
         // Current directory is c:\Users\Dengo\Desktop\edu\src\Learn2Code.Tests\bin\Debug\net8.0
         // Sandbox is at c:\Users\Dengo\Desktop\edu\src\sandbox
         // Need to go up 3 levels: ..\..\..\sandbox
-        
+
         var sourceDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "sandbox"));
-        
+
         if (!Directory.Exists(sourceDir))
         {
             // Try alternative: from workspace root
-            var workspaceDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", ".."));
+            var workspaceDir =
+                Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", ".."));
             sourceDir = Path.Combine(workspaceDir, "src", "sandbox");
         }
-        
+
         if (!Directory.Exists(sourceDir))
         {
             Console.WriteLine($"ERROR: Could not find sandbox directory. Tried: {sourceDir}");
             return;
         }
-        
+
         Console.WriteLine($"Copying sandbox files from: {sourceDir} to {_tempSandboxDir}");
-            
+
         foreach (var file in Directory.GetFiles(sourceDir))
         {
             var destFile = Path.Combine(_tempSandboxDir, Path.GetFileName(file));
             File.Copy(file, destFile, true);
             Console.WriteLine($"  Copied: {Path.GetFileName(file)}");
         }
-        
+
         // Verify files were copied
         var copiedFiles = Directory.GetFiles(_tempSandboxDir);
         Console.WriteLine($"Copied {copiedFiles.Length} files to temp directory");
@@ -108,16 +110,16 @@ public class ComprehensiveVerificationTests
             "python3",
             "python.exe",
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Python311", "python.exe"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Python311", "python.exe")
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Python311",
+                "python.exe")
         };
 
         foreach (var path in possiblePaths)
-        {
             try
             {
-                var process = new System.Diagnostics.Process
+                var process = new Process
                 {
-                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    StartInfo = new ProcessStartInfo
                     {
                         FileName = path,
                         Arguments = "--version",
@@ -136,7 +138,7 @@ public class ComprehensiveVerificationTests
             {
                 // Continue to next path
             }
-        }
+
         return null;
     }
 
@@ -145,44 +147,49 @@ public class ComprehensiveVerificationTests
     {
         // Arrange
         var studentCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            """;
-        
+                          move(10)
+                          turn(90)
+                          move(5)
+                          """;
+
         var referenceCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            """;
-        
+                            move(10)
+                            turn(90)
+                            move(5)
+                            """;
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 5.0,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
-        // Expected state: after move(2) right to (2, 0), turn right 90° to face down (180°), move(1) down to (2, 1)
+
+        // Expected state: after move(10) right to (10, 0), turn right 90° to face down (180°), move(5) down to (10, 5)
+        // Note: move(10) = 10 pixels, move(5) = 5 pixels (1 unit = 1 pixel)
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 2,
-                GridY = 1,
+                X = 10.0,
+                Y = 5.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 180.0,
                 Visible = true,
                 Costume = "default"
@@ -193,7 +200,11 @@ public class ComprehensiveVerificationTests
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        // Get solution trace by executing reference code
+        var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
+        var solutionTrace = solutionExecution.Trace;
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
@@ -212,44 +223,48 @@ public class ComprehensiveVerificationTests
     {
         // Arrange
         var studentCode = """
-            move(1)  # Should be 2
-            turn(90, "right")
-            move(1)
-            """;
-        
+                          move(5)  # Should be 10
+                          turn(90)
+                          move(5)
+                          """;
+
         var referenceCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            """;
-        
+                            move(10)
+                            turn(90)
+                            move(5)
+                            """;
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 5.0,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
-        // Expected state: after move(1) right to (1, 0), turn right 90° to face down (180°), move(1) down to (1, 1)
+
+        // Expected state: after move(5) right to (5, 0), turn right 90° to face down (180°), move(5) down to (5, 5)
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 1,
-                GridY = 1,
+                X = 5.0,
+                Y = 5.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 180.0,
                 Visible = true,
                 Costume = "default",
@@ -272,21 +287,23 @@ public class ComprehensiveVerificationTests
             {
                 var cat = execution.FinalState.Sprites.OfType<CatState>().FirstOrDefault();
                 if (cat != null)
-                {
-                    Console.WriteLine($"Actual cat: GridX={cat.GridX}, GridY={cat.GridY}, Direction={cat.Direction}, Costume={cat.Costume}, Visible={cat.Visible}");
-                }
+                    Console.WriteLine(
+                        $"Actual cat: X={cat.X}, Y={cat.Y}, Direction={cat.Direction}, Costume={cat.Costume}, Visible={cat.Visible}");
             }
         }
-        
+
         var expectedCat = expectedState.Sprites.OfType<CatState>().FirstOrDefault();
         if (expectedCat != null)
-        {
-            Console.WriteLine($"Expected cat: GridX={expectedCat.GridX}, GridY={expectedCat.GridY}, Direction={expectedCat.Direction}, Costume={expectedCat.Costume}, Visible={expectedCat.Visible}");
-        }
-        
+            Console.WriteLine(
+                $"Expected cat: X={expectedCat.X}, Y={expectedCat.Y}, Direction={expectedCat.Direction}, Costume={expectedCat.Costume}, Visible={expectedCat.Visible}");
+
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        // Get solution trace by executing reference code
+        var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
+        var solutionTrace = solutionExecution.Trace;
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check (tolerance allows difference)");
@@ -301,44 +318,48 @@ public class ComprehensiveVerificationTests
     {
         // Arrange
         var studentCode = """
-            move(2)
-            # Missing turn
-            move(1)
-            """;
-        
+                          move(10)
+                          # Missing turn
+                          move(5)
+                          """;
+
         var referenceCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            """;
-        
+                            move(10)
+                            turn(90)
+                            move(5)
+                            """;
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 5.0,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
-        // Expected state: after move(2) right then move(1) right without turning = total 3 right
+
+        // Expected state: after move(10) right then move(5) right without turning = total 15 right
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 3,
-                GridY = 0,
+                X = 15.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
@@ -349,7 +370,11 @@ public class ComprehensiveVerificationTests
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        // Get solution trace by executing reference code
+        var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
+        var solutionTrace = solutionExecution.Trace;
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check (reached expected position)");
@@ -365,46 +390,50 @@ public class ComprehensiveVerificationTests
     {
         // Arrange
         var studentCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            turn(180, "left")  # Extra unnecessary turn
-            move(0)            # Extra zero move
-            """;
-        
+                          move(10)
+                          turn(90)
+                          move(5)
+                          turn(180)  # Extra unnecessary turn
+                          move(0)    # Extra zero move
+                          """;
+
         var referenceCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            """;
-        
+                            move(10)
+                            turn(90)
+                            move(5)
+                            """;
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 5.0,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
-        // Expected state: after move(2) right to (2, 0), turn right 90° to face down (180°), move(1) down to (2, 1), then extra turn left 180° to face up (0°)
+
+        // Expected state: after move(10) right to (10, 0), turn right 90° to face down (180°), move(5) down to (10, 5), then extra turn 180° to face up (0°)
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 2,
-                GridY = 1,
+                X = 10.0,
+                Y = 5.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 0.0,
                 Visible = true,
                 Costume = "default"
@@ -415,7 +444,11 @@ public class ComprehensiveVerificationTests
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        // Get solution trace by executing reference code
+        var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
+        var solutionTrace = solutionExecution.Trace;
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
@@ -430,44 +463,48 @@ public class ComprehensiveVerificationTests
     {
         // Arrange
         var studentCode = """
-            turn(90, "right")
-            move(2)
-            move(1)
-            """;
-        
+                          turn(90)
+                          move(10)
+                          move(5)
+                          """;
+
         var referenceCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            """;
-        
+                            move(10)
+                            turn(90)
+                            move(5)
+                            """;
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 5.0,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
-        // Expected state: turn right first (direction 180°), then move 2 down, then 1 down
+
+        // Expected state: turn right first (direction 180°), then move 10 down, then 5 down
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 3,
+                X = 0.0,
+                Y = 15.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 180.0,
                 Visible = true,
                 Costume = "default"
@@ -478,7 +515,11 @@ public class ComprehensiveVerificationTests
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        // Get solution trace by executing reference code
+        var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
+        var solutionTrace = solutionExecution.Trace;
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check (reached expected position for this order)");
@@ -492,46 +533,48 @@ public class ComprehensiveVerificationTests
     {
         // Arrange
         var studentCode = """
-            for i in range(3):
-                move(1)
-                turn(120, "right")
-            """;
-        
+                          for i in range(3):
+                              move(5)
+                              turn(120)
+                          """;
+
         var referenceCode = """
-            for i in range(3):
-                move(1)
-                turn(120, "right")
-            """;
-        
-        // After 3 moves of 1 at 120-degree turns, we get a triangle
+                            for i in range(3):
+                                move(5)
+                                turn(120)
+                            """;
+
+        // After 3 moves of 5 at 120-degree turns, we get a triangle
         // Final position is back near start (0, 0) with some floating point error
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 10.0,  // Larger tolerance due to floating point errors
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
+            TolerancePx = 1.0, // Larger tolerance due to floating point errors
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
+
         // Expected state: back at start (0, 0) after triangle
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0,
+                Y = 0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
@@ -542,13 +585,17 @@ public class ComprehensiveVerificationTests
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        // Get solution trace by executing reference code
+        var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
+        var solutionTrace = solutionExecution.Trace;
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
-        // Loops generate many low-level trace events, making trace similarity low
-        // Therefore the solution is not optimal despite identical AST
-        Assert.That(result.IsOptimal, Is.False, "Loops produce low trace similarity, so not optimal");
+        // With solution trace comparison, identical code (including loops) should be optimal
+        Assert.That(result.IsOptimal, Is.True,
+            "Identical code with loops should be optimal when compared to solution trace");
         Assert.That(result.Metrics["AstSimilarity"], Is.GreaterThanOrEqualTo(0.9));
     }
 
@@ -557,47 +604,51 @@ public class ComprehensiveVerificationTests
     {
         // Arrange - Simulate Blockly-generated Python code with BLOCK_ID comments
         var studentCode = """
-            # BLOCK_ID: move_block_1
-            move(2)  # Move forward 2 steps
-            # BLOCK_ID: turn_block_2
-            turn(90, "right")  # Turn right 90 degrees
-            # BLOCK_ID: move_block_3
-            move(1)  # Move forward 1 step
-            """;
-        
+                          # BLOCK_ID: move_block_1
+                          move(10)  # Move forward 10 pixels
+                          # BLOCK_ID: turn_block_2
+                          turn(90)  # Turn right 90 degrees
+                          # BLOCK_ID: move_block_3
+                          move(5)   # Move forward 5 pixels
+                          """;
+
         var referenceCode = """
-            move(2)
-            turn(90, "right")
-            move(1)
-            """;
-        
+                            move(10)
+                            turn(90)
+                            move(5)
+                            """;
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 5.0,
+            SceneWidth = 1000.0,
+            SceneHeight = 1000.0,
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0.0,
+                Y = 0.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
-        // Expected state: after move(2) right to (2, 0), turn right 90° to face down (180°), move(1) down to (2, 1)
+
+        // Expected state: after move(10) right to (10, 0), turn right 90° to face down (180°), move(5) down to (10, 5)
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 2,
-                GridY = 1,
+                X = 10.0,
+                Y = 5.0,
+                Width = 50.0,
+                Height = 50.0,
                 Direction = 180.0,
                 Visible = true,
                 Costume = "default"
@@ -608,7 +659,26 @@ public class ComprehensiveVerificationTests
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        // Get solution trace by executing reference code
+        var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
+        var solutionTrace = solutionExecution.Trace;
+
+        // Debug output
+        Console.WriteLine($"DEBUG: execution.Success = {execution.Success}");
+        Console.WriteLine($"DEBUG: execution.Error = {execution.Error}");
+        Console.WriteLine($"DEBUG: initialState.Sprites.Count = {initialState.Sprites.Count}");
+        Console.WriteLine($"DEBUG: execution.FinalState.Sprites.Count = {execution.FinalState.Sprites.Count}");
+        var cat = execution.FinalState.Sprites.OfType<CatState>().FirstOrDefault();
+        if (cat != null)
+            Console.WriteLine($"DEBUG: cat at ({cat.X}, {cat.Y}), direction {cat.Direction}");
+        else
+            Console.WriteLine("DEBUG: cat not found in FinalState");
+        Console.WriteLine($"DEBUG: execution.Trace.Events.Count = {execution.Trace?.Events?.Count}");
+        foreach (var ev in execution.Trace?.Events ?? new List<ExecutionEvent>())
+            Console.WriteLine($"DEBUG: event {ev.EventType} Details={ev.Details?.Count}");
+
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            solutionTrace);
 
         // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
@@ -623,40 +693,40 @@ public class ComprehensiveVerificationTests
     {
         // Arrange
         var studentCode = """
-            move(1)  # Only move 1 instead of 2
-            """;
-        
+                          move(5)  # Only move 5 instead of 10
+                          """;
+
         var referenceCode = """
-            move(2)
-            """;
-        
+                            move(10)
+                            """;
+
         var config = new TaskConfig
         {
-            GridWidth = 20,
-            GridHeight = 20,
-            TolerancePx = 5.0,
+            SceneWidth = 1000,
+            SceneHeight = 1000,
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
-        
+
         // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
-                GridX = 0,
-                GridY = 0,
+                X = 0,
+                Y = 0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
             }
         );
-        
-        // Expected state: Expect cat at (2, 0)
+
+        // Expected state: Expect cat at (10, 0)
         var expectedState = new SceneState(
             new CatState
             {
-                GridX = 2,
-                GridY = 0,
+                X = 10,
+                Y = 0,
                 Direction = 90.0,
                 Visible = true,
                 Costume = "default"
@@ -667,7 +737,8 @@ public class ComprehensiveVerificationTests
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config);
+        var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
+            new ExecutionTrace());
 
         // Assert
         Assert.That(result.IsPassed, Is.False, "Should fail state check");
