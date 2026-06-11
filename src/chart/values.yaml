@@ -1,0 +1,38 @@
+namespace: learn2code
+replicaCount: 1
+image:
+  repository: learn2code-api
+  tag: latest
+  pullPolicy: Never
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+ingress:
+  enabled: false
+  className: nginx
+  host: learn2code.local
+  path: /
+  pathType: Prefix
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+env:
+  ASPNETCORE_URLS: "http://+:8080"
+  ASPNETCORE_ENVIRONMENT: "Development"
+  Python__Path: "python"
+  Python__SandboxDir: "/app/sandbox"
+  Database__SkipSeed: "false"
+probes:
+  readiness:
+    path: /swagger/v1/swagger.json
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  liveness:
+    path: /swagger/v1/swagger.json
+    initialDelaySeconds: 20
+    periodSeconds: 20

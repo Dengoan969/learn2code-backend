@@ -1,0 +1,23 @@
+namespace: learn2code
+replicaCount: 1
+image:
+  repository: learn2code-api
+  tag: latest
+  pullPolicy: Never
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+ingress:
+  enabled: true
+  className: nginx
+  host: learn2code.local
+  path: /
+  pathType: Prefix
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
