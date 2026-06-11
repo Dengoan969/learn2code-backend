@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: learn2code-api
+  namespace: practice301
+  labels:
+    app: learn2code-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: learn2code-api
+  template:
+    metadata:
+      labels:
+        app: learn2code-api
+    spec:
+      containers:
+        - name: learn2code-api
+          image: learn2code-api:latest
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Development"
+            - name: Python__Path
+              value: "python"
+            - name: Python__SandboxDir
+              value: "/app/sandbox"
+            - name: Database__SkipSeed
+              value: "false"
+            - name: ConnectionStrings__DefaultConnection
+              value: "Host=localhost;Port=5432;Database=edu;Username=postgres;Password=postgres"
+            - name: Jwt__Key
+              value: "super_secret_key_that_is_at_least_16_chars"
+            - name: Jwt__Issuer
+              value: "Learn2Code"
+            - name: Jwt__Audience
+              value: "Learn2CodeUsers"
+          readinessProbe:
+            httpGet:
+              path: /swagger/v1/swagger.json
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /swagger/v1/swagger.json
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
