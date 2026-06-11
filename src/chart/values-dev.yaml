@@ -2,7 +2,7 @@ namespace: learn2code
 replicaCount: 1
 image:
   repository: learn2code-api
-  tag: latest
+  tag: v2.0.0
   pullPolicy: Never
 service:
   type: ClusterIP
