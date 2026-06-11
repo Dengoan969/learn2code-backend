@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: learn2code-api
-  namespace: practice301
+  namespace: learn2code
   labels:
     app: learn2code-api
 spec:
@@ -23,6 +23,13 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
           env:
             - name: ASPNETCORE_URLS
               value: "http://+:8080"
