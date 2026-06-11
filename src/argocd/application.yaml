@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Dengoan969/learn2code.git
+    repoURL: https://github.com/Dengoan969/learn2code-backend.git
     targetRevision: devops
     path: src/chart
     helm:
