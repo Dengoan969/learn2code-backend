@@ -22,14 +22,13 @@ public class CoreComparisonEngineTests
     [Test]
     public void Compare_WhenStateMatchesExactly_ReturnsPassed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
         var catState = new CatState
         {
-            X = 250.0, // 5 * 50px
-            Y = 150.0, // 3 * 50px
+            X = 250.0,
+            Y = 150.0,
             Width = 50.0,
             Height = 50.0,
             Direction = 90.0,
@@ -69,11 +68,9 @@ public class CoreComparisonEngineTests
             Level = CheckLevel.Normal
         };
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.True);
         Assert.That(result.Issues, Is.Empty);
     }
@@ -81,15 +78,14 @@ public class CoreComparisonEngineTests
     [Test]
     public void Compare_WhenStateDoesNotMatch_ReturnsFailedWithIssue()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
         var expectedState = new SceneState();
         expectedState.Sprites.Add(new CatState
         {
-            X = 250.0, // 5 * 50px
-            Y = 150.0, // 3 * 50px
+            X = 250.0,
+            Y = 150.0,
             Width = 50.0,
             Height = 50.0,
             Direction = 90.0,
@@ -99,7 +95,7 @@ public class CoreComparisonEngineTests
         var actualState = new SceneState();
         actualState.Sprites.Add(new CatState
         {
-            X = 500.0, // 10 * 50px - Different position
+            X = 500.0,
             Y = 150.0,
             Width = 50.0,
             Height = 50.0,
@@ -124,11 +120,9 @@ public class CoreComparisonEngineTests
             Level = CheckLevel.Normal
         };
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
         Assert.That(result.Issues, Has.Count.EqualTo(1));
         Assert.That(result.Issues[0].Type, Is.EqualTo(IssueType.StateMismatch));
@@ -137,7 +131,6 @@ public class CoreComparisonEngineTests
     [Test]
     public void Compare_WhenTraceSimilarityHigh_ReturnsOptimal()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram
         {
@@ -180,11 +173,10 @@ public class CoreComparisonEngineTests
             SceneWidth = 20,
             SceneHeight = 20,
             TolerancePx = 5.0,
-            MinTraceRatio = 0.8, // 80% similarity required
+            MinTraceRatio = 0.8,
             Level = CheckLevel.Normal
         };
 
-        // Create solution trace matching reference program (events as they would be logged by Python)
         var solutionTrace = new ExecutionTrace
         {
             Events = new List<ExecutionEvent>
@@ -198,18 +190,15 @@ public class CoreComparisonEngineTests
             }
         };
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config, solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True);
-        Assert.That(result.IsOptimal, Is.True); // Trace similarity should be 1.0 (100%)
+        Assert.That(result.IsOptimal, Is.True);
     }
 
     [Test]
     public void Compare_WhenTraceSimilarityLow_ReturnsNotOptimal()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram
         {
@@ -232,7 +221,6 @@ public class CoreComparisonEngineTests
             Events = new List<ExecutionEvent>
             {
                 new() { Step = 1, EventType = "move", Details = new Dictionary<string, object> { { "cells", 2 } } }
-                // Missing turn and second move events
             }
         };
 
@@ -249,11 +237,10 @@ public class CoreComparisonEngineTests
             SceneWidth = 20,
             SceneHeight = 20,
             TolerancePx = 5.0,
-            MinTraceRatio = 0.8, // 80% similarity required
+            MinTraceRatio = 0.8,
             Level = CheckLevel.Normal
         };
 
-        // Create solution trace matching reference program
         var solutionTrace = new ExecutionTrace
         {
             Events = new List<ExecutionEvent>
@@ -268,18 +255,15 @@ public class CoreComparisonEngineTests
             }
         };
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config, solutionTrace);
 
-        // Assert
-        Assert.That(result.IsPassed, Is.True); // State matches
-        Assert.That(result.IsOptimal, Is.False); // Trace similarity is 1/3 ≈ 0.33 < 0.8
+        Assert.That(result.IsPassed, Is.True);
+        Assert.That(result.IsOptimal, Is.False);
     }
 
     [Test]
     public void Compare_WhenExecutionFailed_ReturnsFailed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -296,11 +280,9 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
         Assert.That(result.Issues, Has.Count.AtLeast(1));
         Assert.That(result.Issues[0].Type, Is.EqualTo(IssueType.SyntaxError));
@@ -309,7 +291,6 @@ public class CoreComparisonEngineTests
     [Test]
     public void Compare_WhenStateNull_ReturnsFailed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -317,7 +298,7 @@ public class CoreComparisonEngineTests
 
         var execution = new ExecutionResult
         {
-            FinalState = null!, // Null state
+            FinalState = null!,
             Trace = new ExecutionTrace(),
             Success = true,
             Error = null
@@ -325,11 +306,9 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
         Assert.That(result.Issues, Has.Count.AtLeast(1));
         Assert.That(result.Issues[0].Type, Is.EqualTo(IssueType.StateMismatch));
@@ -338,7 +317,6 @@ public class CoreComparisonEngineTests
     [Test]
     public void Compare_WhenExpectedStateNull_ReturnsFailed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -355,10 +333,8 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, null!, config, new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
         Assert.That(result.Issues, Has.Count.AtLeast(1));
         Assert.That(result.Issues[0].Type, Is.EqualTo(IssueType.StateMismatch));
@@ -367,7 +343,6 @@ public class CoreComparisonEngineTests
     [Test]
     public void Compare_WithAppleAndWallSprites_ComparesCorrectly()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -391,18 +366,15 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.True);
     }
 
     [Test]
     public void Compare_WithMissingAppleSprite_ReturnsFailed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -412,7 +384,6 @@ public class CoreComparisonEngineTests
 
         var actualState = new SceneState();
         actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
-        // Missing apple sprite
 
         var execution = new ExecutionResult
         {
@@ -424,18 +395,15 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
     }
 
     [Test]
     public void Compare_WithExtraAppleSprite_ReturnsFailed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -446,7 +414,7 @@ public class CoreComparisonEngineTests
         var actualState = new SceneState();
         actualState.Sprites.Add(new CatState { X = 5, Y = 3 });
         actualState.Sprites.Add(new AppleState { X = 10, Y = 7 });
-        actualState.Sprites.Add(new AppleState { X = 12, Y = 8 }); // Extra apple
+        actualState.Sprites.Add(new AppleState { X = 12, Y = 8 });
 
         var execution = new ExecutionResult
         {
@@ -458,18 +426,15 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
     }
 
     [Test]
     public void Compare_WithCatDirectionDifference_ReturnsFailed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -477,7 +442,7 @@ public class CoreComparisonEngineTests
         expectedState.Sprites.Add(new CatState { X = 5, Y = 3, Direction = 90.0 });
 
         var actualState = new SceneState();
-        actualState.Sprites.Add(new CatState { X = 5, Y = 3, Direction = 180.0 }); // Different direction
+        actualState.Sprites.Add(new CatState { X = 5, Y = 3, Direction = 180.0 });
 
         var execution = new ExecutionResult
         {
@@ -489,18 +454,15 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
     }
 
     [Test]
     public void Compare_WithCatSaidTexts_ComparesCorrectly()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -526,18 +488,15 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.True);
     }
 
     [Test]
     public void Compare_WithDifferentCatSaidTexts_ReturnsFailed()
     {
-        // Arrange
         var studentProgram = new NormalizedProgram();
         var referenceProgram = new NormalizedProgram();
 
@@ -550,7 +509,7 @@ public class CoreComparisonEngineTests
         var actualState = new SceneState();
         var actualCat = new CatState { X = 5, Y = 3 };
         actualCat.SaidTexts["Hello"] = 1;
-        actualCat.SaidTexts["Test"] = 1; // Different text
+        actualCat.SaidTexts["Test"] = 1;
         actualState.Sprites.Add(actualCat);
 
         var execution = new ExecutionResult
@@ -563,11 +522,9 @@ public class CoreComparisonEngineTests
 
         var config = new TaskConfig();
 
-        // Act
         var result = _engine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False);
     }
 

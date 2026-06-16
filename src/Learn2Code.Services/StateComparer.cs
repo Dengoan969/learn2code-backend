@@ -45,7 +45,6 @@ public class StateComparer
             var a = actualCats[0];
             var e = expectedCats[0];
 
-            // Compare X and Y with tolerance
             if (Math.Abs(a.X - e.X) > tolerance)
             {
                 Debug.WriteLine($"StateComparer: X mismatch: actual={a.X}, expected={e.X}, tolerance={tolerance}");
@@ -77,14 +76,12 @@ public class StateComparer
             }
         }
 
-        // Compare apple positions with tolerance
         if (!CompareSpritePositions(actualApples, expectedApples, tolerance))
         {
             Debug.WriteLine("StateComparer: Apple positions mismatch");
             return false;
         }
 
-        // Compare wall positions with tolerance
         if (!CompareSpritePositions(actualWalls, expectedWalls, tolerance))
         {
             Debug.WriteLine("StateComparer: Wall positions mismatch");
@@ -99,7 +96,6 @@ public class StateComparer
     {
         if (actual.Count != expected.Count) return false;
 
-        // Sort by X then Y for consistent comparison
         var sortedActual = actual.OrderBy(s => s.X).ThenBy(s => s.Y).ToList();
         var sortedExpected = expected.OrderBy(s => s.X).ThenBy(s => s.Y).ToList();
 
@@ -121,7 +117,6 @@ public class StateComparer
 
     private bool CompareDicts(Dictionary<string, int> d1, Dictionary<string, int> d2)
     {
-        // Handle null cases
         if (d1 == null && d2 == null) return true;
         if (d1 == null || d2 == null) return false;
 
@@ -130,5 +125,86 @@ public class StateComparer
             if (!d2.TryGetValue(kv.Key, out var v) || v != kv.Value)
                 return false;
         return true;
+    }
+
+    public bool CompareSayEvents(ExecutionTrace studentTrace, ExecutionTrace solutionTrace, double tolerance)
+    {
+        var studentSays = ExtractSayEvents(studentTrace);
+        var solutionSays = ExtractSayEvents(solutionTrace);
+
+        if (solutionSays.Count == 0)
+            return true;
+
+        if (studentSays.Count != solutionSays.Count)
+        {
+            Debug.WriteLine($"SayEvents: Count mismatch: student={studentSays.Count}, solution={solutionSays.Count}");
+            return false;
+        }
+
+        for (var i = 0; i < solutionSays.Count; i++)
+        {
+            var sol = solutionSays[i];
+            var stu = studentSays[i];
+
+            if (sol.Text != stu.Text)
+            {
+                Debug.WriteLine($"SayEvents: Text mismatch at index {i}: student='{stu.Text}', solution='{sol.Text}'");
+                return false;
+            }
+
+            if (Math.Abs(stu.X - sol.X) > tolerance)
+            {
+                Debug.WriteLine($"SayEvents: X mismatch at index {i}: student={stu.X}, solution={sol.X}, tolerance={tolerance}");
+                return false;
+            }
+
+            if (Math.Abs(stu.Y - sol.Y) > tolerance)
+            {
+                Debug.WriteLine($"SayEvents: Y mismatch at index {i}: student={stu.Y}, solution={sol.Y}, tolerance={tolerance}");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static List<SayEventInfo> ExtractSayEvents(ExecutionTrace trace)
+    {
+        if (trace?.Events == null)
+            return new List<SayEventInfo>();
+
+        return trace.Events
+            .Where(e => e.EventType == "say")
+            .Select(e => new SayEventInfo
+            {
+                Text = e.Details.TryGetValue("text", out var t) ? t?.ToString() ?? "" : "",
+                X = ExtractDouble(e.Details, "x"),
+                Y = ExtractDouble(e.Details, "y")
+            })
+            .ToList();
+    }
+
+    private static double ExtractDouble(Dictionary<string, object> details, string key)
+    {
+        if (!details.TryGetValue(key, out var val)) return 0.0;
+
+        if (val is double d) return d;
+        if (val is int i) return i;
+        if (val is float f) return f;
+        if (val is long l) return l;
+
+        var str = val.ToString();
+        if (str != null && double.TryParse(str, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return parsed;
+
+        return 0.0;
+    }
+
+    private class SayEventInfo
+    {
+        public string Text { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
     }
 }

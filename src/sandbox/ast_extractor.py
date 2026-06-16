@@ -1,4 +1,3 @@
-# ast_extractor.py
 import ast
 import re
 import json
@@ -64,17 +63,15 @@ def get_semantic(node):
 
 
 def evaluate_ast_node(node):
-    """Evaluate simple AST node to a value."""
     if isinstance(node, ast.Constant):
         return node.value
-    elif isinstance(node, ast.Num):  # Python 3.7 compatibility
+    elif isinstance(node, ast.Num):
         return node.n
     elif isinstance(node, ast.Str):
         return node.s
     elif isinstance(node, ast.Name):
         return node.id
     elif isinstance(node, ast.UnaryOp):
-        # Handle unary operations like -90
         operand = evaluate_ast_node(node.operand)
         if isinstance(node.op, ast.USub):
             return -operand
@@ -85,7 +82,6 @@ def evaluate_ast_node(node):
         else:
             return str(node)
     elif isinstance(node, ast.BinOp):
-        # Handle simple binary operations (limited support)
         left = evaluate_ast_node(node.left)
         right = evaluate_ast_node(node.right)
         if isinstance(node.op, ast.Add):
@@ -103,13 +99,10 @@ def evaluate_ast_node(node):
 
 
 def extract_parameters(node):
-    """Extract parameters from AST node."""
     params = {}
     if isinstance(node, ast.Call):
-        # Extract positional arguments
         for i, arg in enumerate(node.args):
             params[f"arg{i}"] = evaluate_ast_node(arg)
-        # Extract keyword arguments
         for kw in node.keywords:
             key = kw.arg or "unnamed"
             params[key] = evaluate_ast_node(kw.value)
@@ -136,7 +129,6 @@ def extract_normalized_ast(code: str) -> dict:
     }
 
     for node in ast.walk(tree):
-        # Skip nodes that are not meaningful as separate elements
         if isinstance(node, (ast.Module, ast.Expr, ast.Load, ast.Constant,
                            ast.Name, ast.Attribute, ast.UnaryOp, ast.BinOp,
                            ast.Compare, ast.BoolOp)):

@@ -4,10 +4,6 @@ using Learn2Code.Core.Enums;
 
 namespace Learn2Code.Core.Models;
 
-/// <summary>
-///     Custom JSON converter for SpriteState that handles polymorphic deserialization
-///     based on the "type" field in JSON (matching Python sandbox output).
-/// </summary>
 public class SpriteStateJsonConverter : JsonConverter<SpriteState>
 {
     public override bool CanConvert(Type typeToConvert)
@@ -30,11 +26,9 @@ public class SpriteStateJsonConverter : JsonConverter<SpriteState>
         if (string.IsNullOrEmpty(typeStr))
             throw new JsonException("Sprite type is null or empty");
 
-        // Parse the type string to SpriteType enum
         if (!Enum.TryParse<SpriteType>(typeStr, true, out var spriteType))
             throw new JsonException($"Unknown sprite type: {typeStr}");
 
-        // Create new options without this converter to avoid recursion
         var optionsWithoutConverter = new JsonSerializerOptions
         {
             PropertyNamingPolicy = options.PropertyNamingPolicy,
@@ -44,7 +38,6 @@ public class SpriteStateJsonConverter : JsonConverter<SpriteState>
             WriteIndented = options.WriteIndented
         };
 
-        // Copy all converters except SpriteStateJsonConverter
         foreach (var converter in options.Converters)
             if (converter is not SpriteStateJsonConverter)
                 optionsWithoutConverter.Converters.Add(converter);
@@ -62,7 +55,6 @@ public class SpriteStateJsonConverter : JsonConverter<SpriteState>
 
     public override void Write(Utf8JsonWriter writer, SpriteState value, JsonSerializerOptions options)
     {
-        // Create new options without this converter to avoid recursion
         var optionsWithoutConverter = new JsonSerializerOptions
         {
             PropertyNamingPolicy = options.PropertyNamingPolicy,
@@ -72,12 +64,10 @@ public class SpriteStateJsonConverter : JsonConverter<SpriteState>
             WriteIndented = options.WriteIndented
         };
 
-        // Copy all converters except SpriteStateJsonConverter
         foreach (var converter in options.Converters)
             if (converter is not SpriteStateJsonConverter)
                 optionsWithoutConverter.Converters.Add(converter);
 
-        // Use default serialization for writing
         JsonSerializer.Serialize(writer, value, value.GetType(), optionsWithoutConverter);
     }
 }

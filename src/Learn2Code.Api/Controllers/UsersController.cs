@@ -19,9 +19,6 @@ public class UsersController : ControllerBase
         _db = db;
     }
 
-    /// <summary>
-    ///     Получить список всех пользователей
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
     {
@@ -33,9 +30,6 @@ public class UsersController : ControllerBase
         return Ok(dtos);
     }
 
-    /// <summary>
-    ///     Получить пользователя по ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<UserDto>> GetById(Guid id)
     {
@@ -46,9 +40,6 @@ public class UsersController : ControllerBase
         return Ok(MapToDto(user));
     }
 
-    /// <summary>
-    ///     Создать нового пользователя (только администратор)
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest request)
     {
@@ -75,9 +66,6 @@ public class UsersController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, MapToDto(user));
     }
 
-    /// <summary>
-    ///     Обновить данные пользователя
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<UserDto>> Update(Guid id, [FromBody] UpdateUserRequest request)
     {
@@ -107,9 +95,6 @@ public class UsersController : ControllerBase
         return Ok(MapToDto(user));
     }
 
-    /// <summary>
-    ///     Удалить пользователя
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -122,9 +107,6 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    ///     Сбросить пароль пользователя (администратор)
-    /// </summary>
     [HttpPost("{id}/reset-password")]
     public async Task<IActionResult> ResetPassword(Guid id, [FromBody] ResetPasswordRequest request)
     {

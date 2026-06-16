@@ -10,7 +10,6 @@ public static class DependencyInjection
 {
     public static IServiceCollection RegisterInfrastructure(this IServiceCollection services, string connectionString)
     {
-        // EF Core
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure(
                 3,
@@ -18,7 +17,6 @@ public static class DependencyInjection
                 null)));
 
 
-        // Репозитории
         services.AddScoped<ITaskRepository, TaskRepository>();
         services.AddScoped<IProgressRepository, ProgressRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();

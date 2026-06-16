@@ -26,9 +26,6 @@ public class SubmissionsController : ControllerBase
         _submissions = submissions;
     }
 
-    /// <summary>
-    ///     Получить результат конкретной попытки (только свои или для преподавателей/админов)
-    /// </summary>
     [HttpGet("{submissionId}")]
     public async Task<ActionResult<SubmissionDto>> GetById(Guid taskId, Guid submissionId)
     {
@@ -43,9 +40,6 @@ public class SubmissionsController : ControllerBase
         return Ok(MapToDto(submission, result));
     }
 
-    /// <summary>
-    ///     Все попытки по заданию (только свои или для преподавателей/админов)
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<SubmissionDto>>> GetAll(
         Guid taskId,
@@ -84,9 +78,6 @@ public class SubmissionsController : ControllerBase
         return Ok(dtos);
     }
 
-    /// <summary>
-    ///     Получить черновик решения для задания
-    /// </summary>
     [HttpGet("draft")]
     public async Task<ActionResult<SubmissionDto>> GetDraft(Guid taskId)
     {
@@ -101,9 +92,6 @@ public class SubmissionsController : ControllerBase
         return MapToDto(draft, ParseResult(draft.ResultJson));
     }
 
-    /// <summary>
-    ///     Создать новый черновик решения
-    /// </summary>
     [HttpPost("draft")]
     public async Task<ActionResult<SubmissionDto>> CreateDraft(Guid taskId)
     {
@@ -122,9 +110,6 @@ public class SubmissionsController : ControllerBase
         }
     }
 
-    /// <summary>
-    ///     Обновить черновик решения
-    /// </summary>
     [HttpPut("draft")]
     public async Task<ActionResult<SubmissionDto>> UpdateDraft(
         Guid taskId,
@@ -145,9 +130,6 @@ public class SubmissionsController : ControllerBase
         }
     }
 
-    /// <summary>
-    ///     Отправить черновик на проверку
-    /// </summary>
     [HttpPost("draft/submit")]
     public async Task<ActionResult<SubmissionDto>> SubmitDraft(Guid taskId)
     {
@@ -201,20 +183,15 @@ public class SubmissionsController : ControllerBase
         return studentId;
     }
 
-    /// <summary>
-    ///     Проверяет, может ли текущий пользователь просматривать указанную попытку
-    /// </summary>
     private bool CanViewSubmission(Submission submission)
     {
         var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(currentUserIdClaim))
             return false;
 
-        // Пользователь может просматривать свою собственную попытку
         if (currentUserIdClaim == submission.StudentId.ToString())
             return true;
 
-        // Преподаватели и админы могут просматривать любые попытки
         var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
         return currentUserRole == "Teacher" || currentUserRole == "Admin";
     }

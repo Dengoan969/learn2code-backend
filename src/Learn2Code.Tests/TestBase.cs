@@ -12,7 +12,6 @@ using Npgsql;
 
 namespace Learn2Code.Tests;
 
-// Пользователь для тестов с токеном и ID
 public record TestUser(string Token, Guid Id, string Login, UserRole Role);
 
 [TestFixture]
@@ -23,12 +22,10 @@ public abstract class TestBase : IDisposable
     {
         _testDbName = $"test_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
 
-        // Create test database connection string
         var baseConnectionString =
             "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres;Include Error Detail=true";
         _testConnectionString = baseConnectionString.Replace("Database=postgres", $"Database={_testDbName}");
 
-        // First, create the test database using the default postgres database
         using (var connection = new NpgsqlConnection(baseConnectionString))
         {
             connection.Open();
@@ -38,7 +35,6 @@ public abstract class TestBase : IDisposable
             }
         }
 
-        // Create database schema before building the factory
         using (var context = CreateDbContext())
         {
             context.Database.EnsureCreated();
@@ -46,7 +42,6 @@ public abstract class TestBase : IDisposable
 
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            // Configure app settings to skip seed data during tests
             builder.ConfigureAppConfiguration((context, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
@@ -75,7 +70,6 @@ public abstract class TestBase : IDisposable
     [OneTimeTearDown]
     public void OneTimeTearDown()
     {
-        // Drop test database after all tests
         using (var scope = Factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -90,20 +84,16 @@ public abstract class TestBase : IDisposable
     {
         ClearAuthorization();
 
-        // Clear cached users since we're about to delete data
         _cachedAdmin = null;
         _cachedTeacher = null;
         _cachedStudent = null;
         _additionalTeachers.Clear();
         _additionalStudents.Clear();
 
-        // Clear all data between tests
         using (var scope = Factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            // Clear all tables in correct order of dependencies
-            // Start with most dependent tables
             dbContext.Submissions.RemoveRange(dbContext.Submissions);
             dbContext.Progress.RemoveRange(dbContext.Progress);
             dbContext.GroupStudents.RemoveRange(dbContext.GroupStudents);
@@ -155,14 +145,12 @@ public abstract class TestBase : IDisposable
 
         var adminId = await GetUserIdFromTokenAsync(token);
 
-        // Verify the admin user exists in the database
         using (var scope = Factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var dbAdmin = await dbContext.Users.FindAsync(adminId);
             if (dbAdmin == null)
             {
-                // Admin should exist, but we'll let the test fail naturally
             }
         }
 
@@ -223,13 +211,11 @@ public abstract class TestBase : IDisposable
         using var scope = Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Check if admin already exists
         var existingAdmin = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Login == "admin");
 
         if (existingAdmin != null) return;
 
-        // Create admin user
         var admin = new User
         {
             Id = Guid.NewGuid(),

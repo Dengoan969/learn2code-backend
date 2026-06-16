@@ -14,7 +14,6 @@ public static class DependencyInjection
         var pythonPath = configuration["Python:Path"] ?? "python";
         var sandboxDir = configuration["Python:SandboxDir"] ?? "src/sandbox";
 
-        // Сервисы
         services.AddScoped<InProcessAstAnalyzer>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<InProcessAstAnalyzer>>();
@@ -24,14 +23,12 @@ public static class DependencyInjection
         services.AddScoped<CoreComparisonEngine>();
         services.AddScoped<SubmissionService>();
 
-        // Sandbox — локальный процесс
         services.AddScoped<InProcessSandboxClient>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<InProcessSandboxClient>>();
             return new InProcessSandboxClient(pythonPath, sandboxDir, logger);
         });
 
-        // Register interfaces
         services.AddScoped<ISandboxClient>(sp => sp.GetRequiredService<InProcessSandboxClient>());
         services.AddScoped<IVerificationEngine>(sp => sp.GetRequiredService<CoreComparisonEngine>());
         services.AddScoped<ILanguageAnalyzer>(sp => sp.GetRequiredService<InProcessAstAnalyzer>());

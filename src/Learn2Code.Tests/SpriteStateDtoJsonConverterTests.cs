@@ -18,11 +18,10 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void Serialize_Deserialize_CatStateDto_RoundTrip()
     {
-        // Arrange
         var original = new CatStateDto
         {
-            X = 500.0, // 10 * 50px
-            Y = 1000.0, // 20 * 50px
+            X = 500.0,
+            Y = 1000.0,
             Width = 50.0,
             Height = 50.0,
             Visible = true,
@@ -32,11 +31,9 @@ public class SpriteStateDtoJsonConverterTests
             CollectedItems = new Dictionary<string, int> { { "apple", 2 } }
         };
 
-        // Act
         var json = JsonSerializer.Serialize(original, _options);
         var deserialized = JsonSerializer.Deserialize<SpriteStateDto>(json, _options);
 
-        // Assert
         Assert.That(deserialized, Is.InstanceOf<CatStateDto>());
         var cat = (CatStateDto)deserialized!;
         Assert.That(cat.X, Is.EqualTo(original.X));
@@ -55,21 +52,18 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void Serialize_Deserialize_AppleStateDto_RoundTrip()
     {
-        // Arrange
         var original = new AppleStateDto
         {
-            X = 250.0, // 5 * 50px
-            Y = 750.0, // 15 * 50px
+            X = 250.0,
+            Y = 750.0,
             Width = 50.0,
             Height = 50.0,
             Visible = false
         };
 
-        // Act
         var json = JsonSerializer.Serialize(original, _options);
         var deserialized = JsonSerializer.Deserialize<SpriteStateDto>(json, _options);
 
-        // Assert
         Assert.That(deserialized, Is.InstanceOf<AppleStateDto>());
         var apple = (AppleStateDto)deserialized!;
         Assert.That(apple.X, Is.EqualTo(original.X));
@@ -82,7 +76,6 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void Serialize_Deserialize_WallStateDto_RoundTrip()
     {
-        // Arrange
         var original = new WallStateDto
         {
             X = 0.0,
@@ -92,11 +85,9 @@ public class SpriteStateDtoJsonConverterTests
             Visible = true
         };
 
-        // Act
         var json = JsonSerializer.Serialize(original, _options);
         var deserialized = JsonSerializer.Deserialize<SpriteStateDto>(json, _options);
 
-        // Assert
         Assert.That(deserialized, Is.InstanceOf<WallStateDto>());
         var wall = (WallStateDto)deserialized!;
         Assert.That(wall.X, Is.EqualTo(original.X));
@@ -109,7 +100,6 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void Deserialize_WithTypeField_CorrectlyIdentifiesSpriteType()
     {
-        // Arrange
         var catJson = @"{
             ""type"": ""Cat"",
             ""gridX"": 10,
@@ -135,7 +125,6 @@ public class SpriteStateDtoJsonConverterTests
             ""visible"": true
         }";
 
-        // Act & Assert
         var cat = JsonSerializer.Deserialize<SpriteStateDto>(catJson, _options);
         Assert.That(cat, Is.InstanceOf<CatStateDto>());
 
@@ -149,14 +138,12 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void Deserialize_MissingTypeField_ThrowsJsonException()
     {
-        // Arrange
         var json = @"{
             ""gridX"": 10,
             ""gridY"": 20,
             ""visible"": true
         }";
 
-        // Act & Assert
         Assert.Throws<JsonException>(() =>
             JsonSerializer.Deserialize<SpriteStateDto>(json, _options));
     }
@@ -164,14 +151,12 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void Deserialize_InvalidTypeField_ThrowsJsonException()
     {
-        // Arrange
         var json = @"{
             ""type"": ""InvalidSprite"",
             ""gridX"": 10,
             ""gridY"": 20
         }";
 
-        // Act & Assert
         Assert.Throws<JsonException>(() =>
             JsonSerializer.Deserialize<SpriteStateDto>(json, _options));
     }
@@ -179,15 +164,12 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void Serialize_IncludesTypeField()
     {
-        // Arrange
         var cat = new CatStateDto { X = 10, Y = 20 };
 
-        // Act
         var json = JsonSerializer.Serialize(cat, _options);
         var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
-        // Assert
         Assert.That(root.TryGetProperty("type", out var typeProperty), Is.True);
         Assert.That(typeProperty.GetString(), Is.EqualTo("cat"));
     }
@@ -195,18 +177,15 @@ public class SpriteStateDtoJsonConverterTests
     [Test]
     public void SceneStateDto_WithMultipleSpriteTypes_SerializesAndDeserializes()
     {
-        // Arrange
         var scene = new SceneStateDto(
             new CatStateDto { X = 10, Y = 20 },
             new AppleStateDto { X = 30, Y = 40 },
             new WallStateDto { X = 50, Y = 60 }
         );
 
-        // Act
         var json = JsonSerializer.Serialize(scene, _options);
         var deserialized = JsonSerializer.Deserialize<SceneStateDto>(json, _options);
 
-        // Assert
         Assert.That(deserialized, Is.Not.Null);
         Assert.That(deserialized!.Sprites, Has.Count.EqualTo(3));
         Assert.That(deserialized.Sprites[0], Is.InstanceOf<CatStateDto>());

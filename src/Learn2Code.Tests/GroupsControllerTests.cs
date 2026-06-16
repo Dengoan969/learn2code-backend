@@ -133,7 +133,7 @@ public class GroupsControllerTests : TestBase
             "Admin Group",
             "Admin Description",
             courseId,
-            teacher.Id); // admin can assign teacher
+            teacher.Id);
         var response = await Client.PostAsJsonAsync("/api/groups", request);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
     }
@@ -159,11 +159,9 @@ public class GroupsControllerTests : TestBase
     [Test]
     public async Task Teacher_CanViewOwnGroups()
     {
-        // Get a teacher and use the same teacher throughout
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
 
-        // Create course with this teacher
         var createCourseRequest = new CreateCourseRequest(
             "Test Course for Groups",
             "Description");
@@ -173,11 +171,9 @@ public class GroupsControllerTests : TestBase
         var course = await courseResponse.Content.ReadFromJsonAsync<CourseDto>();
         var courseId = course!.Id;
 
-        // Verify course exists by fetching it
         var getCourseResponse = await Client.GetAsync($"/api/courses/{courseId}");
         Assert.That(getCourseResponse.IsSuccessStatusCode, Is.True, $"Course {courseId} doesn't exist after creation");
 
-        // Create group with the same teacher
         var createGroupRequest = new CreateGroupRequest(
             "Test Group",
             "Group Description",
@@ -189,7 +185,6 @@ public class GroupsControllerTests : TestBase
         var group = await groupResponse.Content.ReadFromJsonAsync<GroupDto>();
         var groupId = group!.Id;
 
-        // Get all groups
         var response = await Client.GetAsync("/api/groups");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -413,7 +408,6 @@ public class GroupsControllerTests : TestBase
 
         var courseId = await CreateTestCourseAsync();
 
-        // Создаем временную группу для удаления
         var createRequest = new CreateGroupRequest(
             "Temp Group",
             "To be deleted",
@@ -437,7 +431,6 @@ public class GroupsControllerTests : TestBase
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
 
-        // Создаем временную группу для удаления
         var createRequest = new CreateGroupRequest(
             "Temp Group Admin",
             "To be deleted",
@@ -521,7 +514,7 @@ public class GroupsControllerTests : TestBase
         var student = await GetStudentAsync();
         await AddStudentToGroupAsync(groupId, student.Id);
 
-        var request = new AddStudentToGroupRequest(student.Id); // уже добавлен
+        var request = new AddStudentToGroupRequest(student.Id);
         var response = await Client.PostAsJsonAsync($"/api/groups/{groupId}/students", request);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
     }
@@ -599,7 +592,6 @@ public class GroupsControllerTests : TestBase
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
 
-        // Сначала добавляем студента
         var newStudent = await CreateAdditionalStudentAsync("toremove@example.com");
         var addRequest = new AddStudentToGroupRequest(newStudent.Id);
         await Client.PostAsJsonAsync($"/api/groups/{groupId}/students", addRequest);
@@ -640,7 +632,6 @@ public class GroupsControllerTests : TestBase
 
         var students = await response.Content.ReadFromJsonAsync<List<UserDto>>();
         Assert.That(students, Is.Not.Null);
-        // At least one student should be in the group
         Assert.That(students, Has.Count.AtLeast(1));
     }
 

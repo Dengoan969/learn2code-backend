@@ -24,7 +24,6 @@ public static class TaskConfigMapper
         {
             SceneWidth = dto.SceneWidth,
             SceneHeight = dto.SceneHeight
-            // TolerancePx, MinTraceRatio, Level остаются со значениями по умолчанию из модели
         };
     }
 }

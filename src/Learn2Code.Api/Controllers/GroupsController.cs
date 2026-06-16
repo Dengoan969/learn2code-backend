@@ -31,9 +31,6 @@ public class GroupsController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    ///     Получить все группы (админ видит все, учитель — только свои)
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<GroupDto>>> GetAll()
     {
@@ -60,9 +57,6 @@ public class GroupsController : ControllerBase
         return Ok(dtos);
     }
 
-    /// <summary>
-    ///     Получить группу по ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<GroupDto>> GetById(Guid id)
     {
@@ -86,7 +80,6 @@ public class GroupsController : ControllerBase
             }
             else
             {
-                // Other roles not allowed
                 return Forbid();
             }
         }
@@ -94,9 +87,6 @@ public class GroupsController : ControllerBase
         return Ok(MapToDto(group));
     }
 
-    /// <summary>
-    ///     Создать новую группу (только учитель или админ)
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<GroupDto>> Create([FromBody] CreateGroupRequest request)
     {
@@ -137,9 +127,6 @@ public class GroupsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = group.Id }, MapToDto(group));
     }
 
-    /// <summary>
-    ///     Обновить группу (только учитель-владелец или админ)
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<GroupDto>> Update(Guid id, [FromBody] UpdateGroupRequest request)
     {
@@ -168,9 +155,6 @@ public class GroupsController : ControllerBase
         return Ok(MapToDto(group));
     }
 
-    /// <summary>
-    ///     Удалить группу (только учитель-владелец или админ)
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -189,9 +173,6 @@ public class GroupsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    ///     Добавить студента в группу (только учитель-владелец или админ)
-    /// </summary>
     [HttpPost("{id}/students")]
     public async Task<IActionResult> AddStudent(Guid id, [FromBody] AddStudentToGroupRequest request)
     {
@@ -217,9 +198,6 @@ public class GroupsController : ControllerBase
         return Ok();
     }
 
-    /// <summary>
-    ///     Удалить студента из группы (только учитель-владелец или админ)
-    /// </summary>
     [HttpDelete("{id}/students/{studentId}")]
     public async Task<IActionResult> RemoveStudent(Guid id, Guid studentId)
     {
@@ -241,9 +219,6 @@ public class GroupsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    ///     Получить студентов группы (доступно учителю-владельцу, админу и студентам группы)
-    /// </summary>
     [HttpGet("{id}/students")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetStudents(Guid id)
     {
@@ -267,7 +242,6 @@ public class GroupsController : ControllerBase
             }
             else
             {
-                // Other roles not allowed
                 return Forbid();
             }
         }

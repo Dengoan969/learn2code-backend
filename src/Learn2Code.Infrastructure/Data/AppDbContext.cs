@@ -25,7 +25,6 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // User
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -36,7 +35,6 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Login).IsUnique();
         });
 
-        // Course
         modelBuilder.Entity<Course>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -48,7 +46,6 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Lesson
         modelBuilder.Entity<Lesson>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -60,7 +57,6 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Task
         modelBuilder.Entity<EducationalTask>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -71,7 +67,6 @@ public class AppDbContext : DbContext
                 .HasForeignKey(e => e.LessonId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Use centralized JsonOptions for EF Core JSON column serialization
             var jsonOptions = JsonOptions.Default;
 
             entity.Property(e => e.InitialState)
@@ -99,7 +94,6 @@ public class AppDbContext : DbContext
                 );
         });
 
-        // Submission
         modelBuilder.Entity<Submission>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -116,7 +110,6 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Progress
         modelBuilder.Entity<Progress>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -133,7 +126,6 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Group
         modelBuilder.Entity<Group>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -151,7 +143,6 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // GroupStudent (join table)
         modelBuilder.Entity<GroupStudent>(entity =>
         {
             entity.HasKey(e => new { e.GroupId, e.StudentId });

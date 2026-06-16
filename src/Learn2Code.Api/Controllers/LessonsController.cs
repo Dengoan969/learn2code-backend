@@ -27,9 +27,6 @@ public class LessonsController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    ///     Получить все уроки курса
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<LessonDto>>> GetByCourse([FromQuery] Guid courseId)
     {
@@ -46,7 +43,6 @@ public class LessonsController : ControllerBase
 
         var userIdGuid = Guid.Parse(userId);
 
-        // Проверяем доступ в зависимости от роли
         var hasAccess = role switch
         {
             "Admin" => true,
@@ -62,9 +58,6 @@ public class LessonsController : ControllerBase
         return Ok(dtos);
     }
 
-    /// <summary>
-    ///     Получить урок по ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<LessonDto>> GetById(Guid id)
     {
@@ -81,7 +74,6 @@ public class LessonsController : ControllerBase
 
         var userIdGuid = Guid.Parse(userId);
 
-        // Проверяем доступ в зависимости от роли
         var hasAccess = role switch
         {
             "Admin" => true,
@@ -95,9 +87,6 @@ public class LessonsController : ControllerBase
         return Ok(MapToDto(lesson));
     }
 
-    /// <summary>
-    ///     Создать новый урок (только учитель-владелец курса или админ)
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<LessonDto>> Create([FromBody] CreateLessonRequest request)
     {
@@ -125,9 +114,6 @@ public class LessonsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = lesson.Id }, MapToDto(lesson));
     }
 
-    /// <summary>
-    ///     Обновить урок (только учитель-владелец курса или админ)
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateLessonRequest request)
     {
@@ -150,9 +136,6 @@ public class LessonsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    ///     Удалить урок (только учитель-владелец курса или админ)
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

@@ -9,10 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Learn2Code.Services;
 
-/// <summary>
-///     Реализация ISandboxClient, запускающая Python-скрипты локально через Process.
-///     Для MVP — без Docker. В будущем можно заменить на HTTP-клиент к контейнеру.
-/// </summary>
 public class InProcessSandboxClient : ISandboxClient
 {
     private readonly ILogger<InProcessSandboxClient> _logger;
@@ -31,8 +27,6 @@ public class InProcessSandboxClient : ISandboxClient
 
     public async Task<ExecutionResult> ExecuteAsync(string code, SceneState initialState, TaskConfig config)
     {
-        // Convert Models to DTOs for serialization
-
         var request = new { code, initialState, config };
         var requestJson = JsonSerializer.Serialize(request, JsonOptions.Default);
 
@@ -94,12 +88,10 @@ public class InProcessSandboxClient : ISandboxClient
         try
         {
             _logger.LogDebug("Raw stdout from sandbox: {Stdout}", stdout);
-            // Deserialize into DTO first using centralized JsonOptions
             var resultDto = JsonSerializer.Deserialize<ExecutionResult>(stdout, JsonOptions.Default);
             if (resultDto == null)
                 throw new InvalidOperationException("Пустой ответ от песочницы");
 
-            // Convert DTO to Model
             return resultDto;
         }
         catch (JsonException ex)

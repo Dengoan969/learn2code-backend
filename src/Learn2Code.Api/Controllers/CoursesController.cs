@@ -22,9 +22,6 @@ public class CoursesController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    ///     Получить все курсы (админ видит все, учитель — только свои, студент — курсы, в которых состоит)
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CourseDto>>> GetAll()
     {
@@ -46,9 +43,6 @@ public class CoursesController : ControllerBase
         return Ok(dtos);
     }
 
-    /// <summary>
-    ///     Получить курс по ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<CourseDto>> GetById(Guid id)
     {
@@ -62,7 +56,6 @@ public class CoursesController : ControllerBase
 
         var userIdGuid = Guid.Parse(userId);
 
-        // Проверяем доступ в зависимости от роли
         var hasAccess = role switch
         {
             "Admin" => true,
@@ -76,9 +69,6 @@ public class CoursesController : ControllerBase
         return Ok(MapToDto(course));
     }
 
-    /// <summary>
-    ///     Создать новый курс (только учитель или админ)
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<CourseDto>> Create([FromBody] CreateCourseRequest request)
     {
@@ -102,9 +92,6 @@ public class CoursesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = course.Id }, MapToDto(course));
     }
 
-    /// <summary>
-    ///     Обновить курс (только учитель-владелец или админ)
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCourseRequest request)
     {
@@ -123,9 +110,6 @@ public class CoursesController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    ///     Удалить курс (только учитель-владелец или админ)
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

@@ -54,9 +54,6 @@ public class AuthController : ControllerBase
         return Ok(new LoginResponse(tokenString, userDto));
     }
 
-    /// <summary>
-    ///     Смена пароля текущего пользователя
-    /// </summary>
     [HttpPost("change-password")]
     [Authorize]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
@@ -78,9 +75,6 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    ///     Получить информацию о текущем аутентифицированном пользователе
-    /// </summary>
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<MeResponse>> Me()

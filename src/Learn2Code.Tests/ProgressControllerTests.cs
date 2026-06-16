@@ -112,20 +112,16 @@ public class ProgressControllerTests : TestBase
             var student = await GetStudentAsync();
             SetBearerToken(student.Token);
 
-            // Create draft
             var createDraftResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}/submissions/draft", new { });
             Assert.That(createDraftResponse.IsSuccessStatusCode, Is.True);
 
-            // Update draft with code
             var updateRequest = new UpdateDraftRequest(code);
             var updateResponse = await Client.PutAsJsonAsync($"/api/tasks/{taskId}/submissions/draft", updateRequest);
             Assert.That(updateResponse.IsSuccessStatusCode, Is.True);
 
-            // Submit draft
             var submitResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}/submissions/draft/submit", new { });
             Assert.That(submitResponse.IsSuccessStatusCode, Is.True);
 
-            // После отправки прогресс должен быть создан автоматически
             return taskId;
         }
         finally
@@ -325,7 +321,6 @@ public class ProgressControllerTests : TestBase
         var taskId = await CreateTestTaskAsync(lessonId);
 
         var student = await GetStudentAsync();
-        // Не создаем отправку, поэтому прогресса не будет
 
         SetBearerToken(teacher.Token);
         var response = await Client.GetAsync($"/api/progress/{student.Id}/tasks/{taskId}");

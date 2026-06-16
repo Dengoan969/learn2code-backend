@@ -24,7 +24,6 @@ public class CoreComparisonEngine : IVerificationEngine
         TaskConfig config,
         ExecutionTrace solutionTrace)
     {
-        // Если выполнение завершилось с ошибкой, сразу возвращаем неудачу
         if (!execution.Success)
         {
             var errorIssues = new List<CodeIssue>
@@ -33,8 +32,8 @@ public class CoreComparisonEngine : IVerificationEngine
                     IssueType.SyntaxError,
                     $"Ошибка выполнения: {execution.Error}",
                     Severity.Error,
-                    null, // BlockId
-                    1) // Line
+                    null,
+                    1)
             };
 
             return new CheckResult(
@@ -55,19 +54,14 @@ public class CoreComparisonEngine : IVerificationEngine
             );
         }
 
-        // 1. State-проверка (критическая)
-        var stateResult = CheckState(execution.FinalState, expectedState, config);
+        var stateResult = CheckState(execution.FinalState, expectedState, config, execution.Trace, solutionTrace);
 
-        // 2. Trace-проверка (LCS последовательности событий)
-        // Если есть solutionTrace, сравниваем с ним, иначе схожесть = 0
         var traceSimilarity = solutionTrace != null
             ? CalculateTraceSimilarityWithSolutionTrace(execution.Trace, solutionTrace)
             : 0.0;
 
-        // 3. AST-проверка (структурное + семантическое сходство)
         var astMetrics = CalculateAstSimilarity(student, reference);
 
-        // Агрегация
         var isPassed = stateResult.IsPassed;
         var isOptimal = traceSimilarity >= config.MinTraceRatio
                         && astMetrics["RedundantCount"] == 0
@@ -97,7 +91,12 @@ public class CoreComparisonEngine : IVerificationEngine
         );
     }
 
-    private StateCheckResult CheckState(SceneState actualState, SceneState expectedState, TaskConfig config)
+    private StateCheckResult CheckState(
+        SceneState actualState,
+        SceneState expectedState,
+        TaskConfig config,
+        ExecutionTrace? studentTrace = null,
+        ExecutionTrace? solutionTrace = null)
     {
         if (actualState == null)
             return new StateCheckResult(false, "Не удалось получить состояние сцены");
@@ -107,7 +106,6 @@ public class CoreComparisonEngine : IVerificationEngine
 
         try
         {
-            // Debug logging
             Console.WriteLine($"CheckState: actualState.Sprites.Count = {actualState.Sprites.Count}");
             Console.WriteLine($"CheckState: expectedState.Sprites.Count = {expectedState.Sprites.Count}");
 
@@ -133,6 +131,13 @@ public class CoreComparisonEngine : IVerificationEngine
 
             if (!isEqual) return new StateCheckResult(false, "Состояние сцены не соответствует ожидаемому");
 
+            if (studentTrace != null && solutionTrace != null)
+            {
+                var sayEventsMatch = _stateComparer.CompareSayEvents(studentTrace, solutionTrace, config.TolerancePx);
+                if (!sayEventsMatch)
+                    return new StateCheckResult(false, "Текст сказан не в том месте");
+            }
+
             return new StateCheckResult(true, null);
         }
         catch (Exception ex)
@@ -146,27 +151,22 @@ public class CoreComparisonEngine : IVerificationEngine
         if (trace == null || trace.Events == null)
             return 0.0;
 
-        // Extract event types from trace
         var actualTrace = trace.Events
             .Select(e => e.EventType)
             .Where(t => !string.IsNullOrEmpty(t))
             .ToList();
 
-        // Use SemanticHint if available, otherwise fall back to Type
         var expectedTrace = referenceElements
             .Select(e => !string.IsNullOrEmpty(e.SemanticHint) ? e.SemanticHint : e.Type)
             .Where(t => !string.IsNullOrEmpty(t))
             .ToList();
 
-        // If expected trace is empty, nothing to compare - perfect similarity
         if (expectedTrace.Count == 0)
             return 1.0;
 
-        // If actual trace is empty but expected is not, similarity is 0
         if (actualTrace.Count == 0)
             return 0.0;
 
-        // LCS (Longest Common Subsequence) для оценки сходства трасс
         var lcsLength = CalculateLCS(actualTrace, expectedTrace);
         var similarity = (double)lcsLength / Math.Max(expectedTrace.Count, actualTrace.Count);
         return Math.Round(similarity, 2);
@@ -180,7 +180,6 @@ public class CoreComparisonEngine : IVerificationEngine
         if (solutionTrace == null || solutionTrace.Events == null)
             return 0.0;
 
-        // Extract event types from both traces
         var studentEvents = studentTrace.Events
             .Select(e => e.EventType)
             .Where(t => !string.IsNullOrEmpty(t))
@@ -191,15 +190,12 @@ public class CoreComparisonEngine : IVerificationEngine
             .Where(t => !string.IsNullOrEmpty(t))
             .ToList();
 
-        // If solution trace is empty, nothing to compare - perfect similarity
         if (solutionEvents.Count == 0)
             return 1.0;
 
-        // If student trace is empty but solution is not, similarity is 0
         if (studentEvents.Count == 0)
             return 0.0;
 
-        // LCS (Longest Common Subsequence) для оценки сходства трасс
         var lcsLength = CalculateLCS(studentEvents, solutionEvents);
         var similarity = (double)lcsLength / Math.Max(solutionEvents.Count, studentEvents.Count);
         return Math.Round(similarity, 2);
@@ -231,10 +227,8 @@ public class CoreComparisonEngine : IVerificationEngine
             ? (double)commonCount / referenceTypes.Count
             : 1.0;
 
-        // Подсчёт лишних элементов
         var redundantCount = Math.Max(0, studentTypes.Count - referenceTypes.Count);
 
-        // Семантическое сходство с учётом параметров
         var semanticMatches = 0;
         var parameterMismatches = 0;
         var matchedStudentIndices = new HashSet<int>();
@@ -295,11 +289,10 @@ public class CoreComparisonEngine : IVerificationEngine
             return 0.0;
 
         if (student.SemanticHint != reference.SemanticHint)
-            return 0.3; // Partial match if types match but semantic hints differ
+            return 0.3;
 
-        // Compare parameters
         var paramScore = CalculateParameterSimilarity(student.Parameters, reference.Parameters);
-        return 0.7 + 0.3 * paramScore; // Base 0.7 for type+semantic match, up to 1.0 for perfect parameters
+        return 0.7 + 0.3 * paramScore;
     }
 
     private double CalculateParameterSimilarity(
@@ -343,7 +336,6 @@ public class CoreComparisonEngine : IVerificationEngine
     {
         var issues = new List<CodeIssue>();
 
-        // Проблемы состояния
         if (!stateResult.IsPassed && !string.IsNullOrEmpty(stateResult.ErrorMessage))
             issues.Add(new CodeIssue(
                 IssueType.StateMismatch,
@@ -351,7 +343,6 @@ public class CoreComparisonEngine : IVerificationEngine
                 Severity.Error
             ));
 
-        // Проблемы трассы
         if (traceSimilarity < config.MinTraceRatio)
             issues.Add(new CodeIssue(
                 IssueType.TraceMismatch,
@@ -359,7 +350,6 @@ public class CoreComparisonEngine : IVerificationEngine
                 Severity.Warning
             ));
 
-        // Лишний код
         if (astMetrics.TryGetValue("RedundantCount", out var redundant) && redundant > 0)
             issues.Add(new CodeIssue(
                 IssueType.RedundantCode,
@@ -367,7 +357,6 @@ public class CoreComparisonEngine : IVerificationEngine
                 Severity.Warning
             ));
 
-        // Отсутствующие элементы
         if (astMetrics.TryGetValue("MissingCount", out var missing) && missing > 0)
             issues.Add(new CodeIssue(
                 IssueType.MissingElement,
@@ -375,7 +364,6 @@ public class CoreComparisonEngine : IVerificationEngine
                 Severity.Warning
             ));
 
-        // Семантические проблемы
         if (astMetrics.TryGetValue("SemanticSimilarity", out var semantic) && semantic < 0.7)
             issues.Add(new CodeIssue(
                 IssueType.SemanticMismatch,
@@ -383,7 +371,6 @@ public class CoreComparisonEngine : IVerificationEngine
                 Severity.Warning
             ));
 
-        // Проблемы с параметрами
         if (astMetrics.TryGetValue("ParameterSimilarity", out var paramSimilarity) && paramSimilarity < 0.8)
         {
             var mismatchCount = astMetrics.TryGetValue("ParameterMismatchCount", out var count) ? (int)count : 0;
@@ -408,10 +395,20 @@ public class CoreComparisonEngine : IVerificationEngine
             return "Отлично! Задание выполнено правильно и оптимально! 🎉";
 
         if (isPassed && !isOptimal)
-            return "Задание пройдено, но решение можно улучшить. Попробуй сделать его короче! 🤔";
+        {
+            if (astMetrics.GetValueOrDefault("RedundantCount", 0) > 0)
+                return "Задание пройдено, но есть лишние действия. Попробуй сделать решение короче! 🧹";
+
+            return "Задание пройдено, но порядок действий отличается от ожидаемого. Проверь последовательность шагов! 📋";
+        }
 
         if (!stateResult.IsPassed)
+        {
+            if (stateResult.ErrorMessage != null && stateResult.ErrorMessage.Contains("Текст сказан не в том месте"))
+                return "Кот сказал правильный текст, но не в том месте! Сначала нужно дойти до правильной позиции. 🎯";
+
             return "Что-то не так! Проверь, чтобы персонаж оказался в нужном месте. 🎯";
+        }
 
         return "Попробуй ещё раз! Обрати внимание на последовательность действий. 💡";
     }

@@ -4,10 +4,6 @@ using Learn2Code.Core.Enums;
 
 namespace Learn2Code.Core.DTOs;
 
-/// <summary>
-///     Elegant JSON converter for SpriteStateDto that handles polymorphic deserialization
-///     based on the "type" field in JSON (matching Python sandbox output).
-/// </summary>
 public class SpriteStateDtoJsonConverter : JsonConverter<SpriteStateDto>
 {
     public override bool CanConvert(Type typeToConvert)
@@ -80,7 +76,6 @@ public class SpriteStateDtoJsonConverter : JsonConverter<SpriteStateDto>
     {
         var options = new JsonSerializerOptions(original);
 
-        // Remove this converter to avoid infinite recursion
         for (var i = options.Converters.Count - 1; i >= 0; i--)
             if (options.Converters[i] is SpriteStateDtoJsonConverter)
             {

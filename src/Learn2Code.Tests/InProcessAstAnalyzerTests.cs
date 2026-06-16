@@ -14,11 +14,9 @@ public class InProcessAstAnalyzerTests
     {
         _mockLogger = new Mock<ILogger<InProcessAstAnalyzer>>();
 
-        // Create temporary sandbox directory for tests
         _tempSandboxDir = Path.Combine(Path.GetTempPath(), $"ast_test_{Guid.NewGuid()}");
         Directory.CreateDirectory(_tempSandboxDir);
 
-        // Create ast_extractor.py for testing
         var astExtractorPath = Path.Combine(_tempSandboxDir, "ast_extractor.py");
         File.WriteAllText(astExtractorPath, """
                                             import sys
@@ -27,7 +25,6 @@ public class InProcessAstAnalyzerTests
                                             def main():
                                                 code = sys.stdin.read()
                                                 
-                                                # Test simulation - return different responses based on code content
                                                 if "syntax_error" in code:
                                                     print(json.dumps({"success": False, "error": "SyntaxError: invalid syntax"}))
                                                 elif "empty" in code:
@@ -63,7 +60,6 @@ public class InProcessAstAnalyzerTests
                                                     }
                                                     print(json.dumps(result))
                                                 else:
-                                                    # Default response
                                                     result = {
                                                         "success": True,
                                                         "elements": [
@@ -82,7 +78,6 @@ public class InProcessAstAnalyzerTests
                                                 main()
                                             """);
 
-        // Try to find Python executable
         _pythonPath = FindPythonPath();
         if (_pythonPath == null) Assert.Inconclusive("Python not found on system. Skipping AST analyzer tests.");
     }
@@ -96,7 +91,6 @@ public class InProcessAstAnalyzerTests
         }
         catch
         {
-            // Ignore cleanup errors
         }
     }
 
@@ -107,10 +101,8 @@ public class InProcessAstAnalyzerTests
     [Test]
     public void Supports_WithPythonLanguage_ReturnsTrue()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
 
-        // Act & Assert
         Assert.That(analyzer.Supports("python"), Is.True);
         Assert.That(analyzer.Supports("Python"), Is.True);
         Assert.That(analyzer.Supports("python3"), Is.True);
@@ -120,10 +112,8 @@ public class InProcessAstAnalyzerTests
     [Test]
     public void Supports_WithNonPythonLanguage_ReturnsFalse()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
 
-        // Act & Assert
         Assert.That(analyzer.Supports("javascript"), Is.False);
         Assert.That(analyzer.Supports("java"), Is.False);
         Assert.That(analyzer.Supports("csharp"), Is.False);
@@ -132,14 +122,11 @@ public class InProcessAstAnalyzerTests
     [Test]
     public async Task ExtractAsync_WithValidCode_ReturnsNormalizedProgram()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "simple_move test code";
 
-        // Act
         var result = await analyzer.ExtractAsync(code);
 
-        // Assert
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Elements, Has.Count.EqualTo(2));
         Assert.That(result.Elements[0].Type, Is.EqualTo("FunctionCall"));
@@ -150,21 +137,18 @@ public class InProcessAstAnalyzerTests
         Assert.That(result.Metrics, Contains.Key("loopCount"));
         Assert.That(result.Metrics["loopCount"], Is.EqualTo(0));
         Assert.That(result.Metrics["functionCalls"], Is.EqualTo(2));
-        Assert.That(result.Metrics["lineCount"], Is.EqualTo(1)); // code.Split('\n').Length
+        Assert.That(result.Metrics["lineCount"], Is.EqualTo(1));
         Assert.That(result.Metrics["elementCount"], Is.EqualTo(2));
     }
 
     [Test]
     public async Task ExtractAsync_WithLoopCode_ReturnsProgramWithLoop()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "with_loop test code\nsecond line";
 
-        // Act
         var result = await analyzer.ExtractAsync(code);
 
-        // Assert
         Assert.That(result.Elements, Has.Count.EqualTo(2));
         Assert.That(result.Elements[0].Type, Is.EqualTo("Loop"));
         Assert.That(result.Elements[0].SemanticHint, Is.EqualTo("loop"));
@@ -175,14 +159,11 @@ public class InProcessAstAnalyzerTests
     [Test]
     public async Task ExtractAsync_WithEmptyCode_ReturnsEmptyProgram()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "empty";
 
-        // Act
         var result = await analyzer.ExtractAsync(code);
 
-        // Assert
         Assert.That(result.Elements, Is.Empty);
         Assert.That(result.Metrics["lineCount"], Is.EqualTo(1));
         Assert.That(result.Metrics["elementCount"], Is.EqualTo(0));
@@ -191,11 +172,9 @@ public class InProcessAstAnalyzerTests
     [Test]
     public void ExtractAsync_WithSyntaxErrorCode_ThrowsInvalidOperationException()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "syntax_error test";
 
-        // Act & Assert
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await analyzer.ExtractAsync(code));
     }
@@ -203,7 +182,6 @@ public class InProcessAstAnalyzerTests
     [Test]
     public void ExtractAsync_WithTimeout_ThrowsTimeoutException()
     {
-        // Create a slow ast_extractor
         var slowExtractorPath = Path.Combine(_tempSandboxDir, "ast_extractor_slow.py");
         File.WriteAllText(slowExtractorPath, """
                                              import sys
@@ -211,7 +189,7 @@ public class InProcessAstAnalyzerTests
                                              import json
 
                                              def main():
-                                                 time.sleep(2)  # Will timeout
+                                                 time.sleep(2)
                                                  result = {"success": True, "elements": []}
                                                  print(json.dumps(result))
 
@@ -219,20 +197,16 @@ public class InProcessAstAnalyzerTests
                                                  main()
                                              """);
 
-        // This test would require modifying the analyzer to use a different script
-        // For now, we'll test through the actual extractor with timeout simulation
         Assert.Pass("Test requires analyzer modification to inject script path");
     }
 
     [Test]
     public void ExtractAsync_WithInvalidPythonPath_ThrowsInvalidOperationException()
     {
-        // Arrange
         var invalidPythonPath = "nonexistent_python.exe";
         var analyzer = new InProcessAstAnalyzer(invalidPythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "test code";
 
-        // Act & Assert
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await analyzer.ExtractAsync(code));
     }
@@ -240,41 +214,33 @@ public class InProcessAstAnalyzerTests
     [Test]
     public async Task ExtractAsync_WithInvalidJsonResponse_ThrowsInvalidOperationException()
     {
-        // Create an ast_extractor that returns invalid JSON
         var invalidExtractorPath = Path.Combine(_tempSandboxDir, "ast_extractor_invalid.py");
         File.WriteAllText(invalidExtractorPath, """
                                                 print("invalid json")
                                                 """);
 
-        // This test would require modifying the analyzer to use a different script
         Assert.Pass("Test requires analyzer modification to inject script path");
     }
 
     [Test]
     public async Task ExtractAsync_WithMultilineCode_CalculatesCorrectLineCount()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "line1\nline2\nline3\nline4";
 
-        // Act
         var result = await analyzer.ExtractAsync(code);
 
-        // Assert
         Assert.That(result.Metrics["lineCount"], Is.EqualTo(4));
     }
 
     [Test]
     public async Task ExtractAsync_WithCodeContainingBlockIds_PreservesBlockIds()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
-        var code = "simple_move"; // Our test script returns elements with block IDs
+        var code = "simple_move";
 
-        // Act
         var result = await analyzer.ExtractAsync(code);
 
-        // Assert
         Assert.That(result.Elements[0].BlockId, Is.EqualTo("move_001"));
         Assert.That(result.Elements[1].BlockId, Is.EqualTo("turn_001"));
     }
@@ -282,14 +248,11 @@ public class InProcessAstAnalyzerTests
     [Test]
     public async Task ExtractAsync_WithDefaultCode_ReturnsDefaultProgram()
     {
-        // Arrange
         var analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "any other code";
 
-        // Act
         var result = await analyzer.ExtractAsync(code);
 
-        // Assert
         Assert.That(result.Elements, Has.Count.EqualTo(1));
         Assert.That(result.Elements[0].Type, Is.EqualTo("FunctionCall"));
         Assert.That(result.Elements[0].SemanticHint, Is.EqualTo("move"));
@@ -299,7 +262,6 @@ public class InProcessAstAnalyzerTests
     [Test]
     public async Task ExtractAsync_WithNullMetrics_HandlesGracefully()
     {
-        // Create an ast_extractor that returns null metrics
         var nullMetricsPath = Path.Combine(_tempSandboxDir, "ast_extractor_null_metrics.py");
         File.WriteAllText(nullMetricsPath, """
                                            import sys
@@ -319,7 +281,6 @@ public class InProcessAstAnalyzerTests
                                                main()
                                            """);
 
-        // This test would verify that null metrics are handled
         Assert.Pass("Test requires analyzer modification to inject script path");
     }
 
@@ -357,7 +318,6 @@ public class InProcessAstAnalyzerTests
             }
             catch
             {
-                // Continue to next path
             }
 
         return null;

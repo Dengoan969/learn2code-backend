@@ -7,11 +7,6 @@ public static class JsonComparisonHelper
 {
     private static readonly JsonSerializerOptions _options = JsonOptions.Default;
 
-    /// <summary>
-    ///     Сравнивает два объекта через их JSON-сериализацию.
-    ///     Полезно для сравнения объектов, которые содержат сложные графы объектов
-    ///     или полиморфные коллекции.
-    /// </summary>
     public static bool JsonEquals<T>(T a, T b)
     {
         if (ReferenceEquals(a, b)) return true;
@@ -23,9 +18,6 @@ public static class JsonComparisonHelper
         return jsonA == jsonB;
     }
 
-    /// <summary>
-    ///     Создает предикат для использования в Moq Verify с сравнением через JSON.
-    /// </summary>
     public static Func<T, bool> JsonEquals<T>(T expected)
     {
         return actual => JsonEquals(expected, actual);

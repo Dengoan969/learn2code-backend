@@ -9,9 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Learn2Code.Services;
 
-/// <summary>
-///     Реализация ILanguageAnalyzer, запускающая ast_extractor.py локально через Process.
-/// </summary>
 public class InProcessAstAnalyzer : ILanguageAnalyzer
 {
     private readonly ILogger<InProcessAstAnalyzer> _logger;
@@ -103,7 +100,6 @@ public class InProcessAstAnalyzer : ILanguageAnalyzer
                 var parameters = new Dictionary<string, object?>();
                 if (elem.Parameters != null)
                     foreach (var (key, value) in elem.Parameters)
-                        // Convert JSON values to C# objects
                         if (value is JsonElement jsonElement)
                             parameters[key] = jsonElement.ValueKind switch
                             {
@@ -127,7 +123,6 @@ public class InProcessAstAnalyzer : ILanguageAnalyzer
                 });
             }
 
-            // Копируем метрики
             if (result.Metrics != null)
                 foreach (var kv in result.Metrics)
                     program.Metrics[kv.Key] = kv.Value;

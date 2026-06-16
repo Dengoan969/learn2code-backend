@@ -17,18 +17,14 @@ public class ComprehensiveVerificationTests
         _mockSandboxLogger = new Mock<ILogger<InProcessSandboxClient>>();
         _mockAnalyzerLogger = new Mock<ILogger<InProcessAstAnalyzer>>();
 
-        // Debug: log current directory
         Console.WriteLine($"SetUp: Current directory = {Directory.GetCurrentDirectory()}");
 
-        // Create temporary sandbox directory
         _tempSandboxDir = Path.Combine(Path.GetTempPath(), $"sandbox_comprehensive_{Guid.NewGuid()}");
         Directory.CreateDirectory(_tempSandboxDir);
         Console.WriteLine($"SetUp: Temp sandbox dir = {_tempSandboxDir}");
 
-        // Copy actual sandbox files for testing
         CopySandboxFiles();
 
-        // Find Python executable
         _pythonPath = FindPythonPath();
         if (_pythonPath == null)
         {
@@ -38,7 +34,6 @@ public class ComprehensiveVerificationTests
 
         Console.WriteLine($"SetUp: Python path = {_pythonPath}");
 
-        // Initialize real components
         _analyzer = new InProcessAstAnalyzer(_pythonPath, _tempSandboxDir, _mockAnalyzerLogger.Object);
         _sandboxClient = new InProcessSandboxClient(_pythonPath, _tempSandboxDir, _mockSandboxLogger.Object);
         _verificationEngine = new CoreComparisonEngine(_analyzer);
@@ -52,10 +47,7 @@ public class ComprehensiveVerificationTests
             if (Directory.Exists(_tempSandboxDir))
                 Directory.Delete(_tempSandboxDir, true);
         }
-        catch
-        {
-            // Ignore cleanup errors
-        }
+        catch { }
     }
 
     private Mock<ILogger<InProcessSandboxClient>> _mockSandboxLogger;
@@ -68,15 +60,11 @@ public class ComprehensiveVerificationTests
 
     private void CopySandboxFiles()
     {
-        // Current directory is c:\Users\Dengo\Desktop\edu\src\Learn2Code.Tests\bin\Debug\net8.0
-        // Sandbox is at c:\Users\Dengo\Desktop\edu\src\sandbox
-        // Need to go up 3 levels: ..\..\..\sandbox
 
         var sourceDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "sandbox"));
 
         if (!Directory.Exists(sourceDir))
         {
-            // Try alternative: from workspace root
             var workspaceDir =
                 Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", ".."));
             sourceDir = Path.Combine(workspaceDir, "src", "sandbox");
@@ -97,7 +85,6 @@ public class ComprehensiveVerificationTests
             Console.WriteLine($"  Copied: {Path.GetFileName(file)}");
         }
 
-        // Verify files were copied
         var copiedFiles = Directory.GetFiles(_tempSandboxDir);
         Console.WriteLine($"Copied {copiedFiles.Length} files to temp directory");
     }
@@ -134,10 +121,7 @@ public class ComprehensiveVerificationTests
                 if (process.ExitCode == 0)
                     return path;
             }
-            catch
-            {
-                // Continue to next path
-            }
+            catch { }
 
         return null;
     }
@@ -145,7 +129,6 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_SimpleMove_ShouldPassAndBeOptimal()
     {
-        // Arrange
         var studentCode = """
                           move(10)
                           turn(90)
@@ -167,7 +150,6 @@ public class ComprehensiveVerificationTests
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -181,8 +163,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: after move(10) right to (10, 0), turn right 90° to face down (180°), move(5) down to (10, 5)
-        // Note: move(10) = 10 pixels, move(5) = 5 pixels (1 unit = 1 pixel)
         var expectedState = new SceneState(
             new CatState
             {
@@ -196,17 +176,14 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        // Get solution trace by executing reference code
         var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
         var solutionTrace = solutionExecution.Trace;
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
         Assert.That(result.IsOptimal, Is.True, "Should be optimal (correct trace, no redundant code)");
         Assert.That(result.Metrics["StateScore"], Is.EqualTo(1.0));
@@ -221,9 +198,8 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_WrongParameters_ShouldPassButNotOptimal()
     {
-        // Arrange
         var studentCode = """
-                          move(5)  # Should be 10
+                          move(5)
                           turn(90)
                           move(5)
                           """;
@@ -243,7 +219,6 @@ public class ComprehensiveVerificationTests
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -257,7 +232,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: after move(5) right to (5, 0), turn right 90° to face down (180°), move(5) down to (5, 5)
         var expectedState = new SceneState(
             new CatState
             {
@@ -273,7 +247,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         Console.WriteLine($"Execution success: {execution.Success}");
         if (!execution.Success)
@@ -299,13 +272,11 @@ public class ComprehensiveVerificationTests
 
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        // Get solution trace by executing reference code
         var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
         var solutionTrace = solutionExecution.Trace;
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check (tolerance allows difference)");
         Assert.That(result.IsOptimal, Is.False, "Should not be optimal due to parameter mismatch");
         Assert.That(result.Metrics["ParameterSimilarity"], Is.LessThan(1.0), "Parameter similarity should be < 1.0");
@@ -316,10 +287,8 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_MissingAction_ShouldHaveMissingElementIssue()
     {
-        // Arrange
         var studentCode = """
                           move(10)
-                          # Missing turn
                           move(5)
                           """;
 
@@ -338,7 +307,6 @@ public class ComprehensiveVerificationTests
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -352,7 +320,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: after move(10) right then move(5) right without turning = total 15 right
         var expectedState = new SceneState(
             new CatState
             {
@@ -366,17 +333,14 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        // Get solution trace by executing reference code
         var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
         var solutionTrace = solutionExecution.Trace;
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check (reached expected position)");
         Assert.That(result.Metrics["MissingCount"], Is.GreaterThan(0), "Should have missing elements");
         Assert.That(result.Issues.Any(i => i.Type == IssueType.MissingElement), Is.True,
@@ -388,13 +352,12 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_ExtraActions_ShouldHaveRedundantCodeIssue()
     {
-        // Arrange
         var studentCode = """
                           move(10)
                           turn(90)
                           move(5)
-                          turn(180)  # Extra unnecessary turn
-                          move(0)    # Extra zero move
+                          turn(180)
+                          move(0)
                           """;
 
         var referenceCode = """
@@ -412,7 +375,6 @@ public class ComprehensiveVerificationTests
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -426,7 +388,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: after move(10) right to (10, 0), turn right 90° to face down (180°), move(5) down to (10, 5), then extra turn 180° to face up (0°)
         var expectedState = new SceneState(
             new CatState
             {
@@ -440,17 +401,14 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        // Get solution trace by executing reference code
         var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
         var solutionTrace = solutionExecution.Trace;
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
         Assert.That(result.IsOptimal, Is.False, "Should not be optimal due to redundant code");
         Assert.That(result.Metrics["RedundantCount"], Is.GreaterThan(0), "Should have redundant elements");
@@ -461,7 +419,6 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_WrongOrder_ShouldHaveTraceMismatch()
     {
-        // Arrange
         var studentCode = """
                           turn(90)
                           move(10)
@@ -483,7 +440,6 @@ public class ComprehensiveVerificationTests
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -497,7 +453,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: turn right first (direction 180°), then move 10 down, then 5 down
         var expectedState = new SceneState(
             new CatState
             {
@@ -511,17 +466,14 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        // Get solution trace by executing reference code
         var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
         var solutionTrace = solutionExecution.Trace;
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check (reached expected position for this order)");
         Assert.That(result.Metrics["TraceSimilarity"], Is.LessThan(1.0), "Trace similarity should be < 1.0");
         Assert.That(result.Issues.Any(i => i.Type == IssueType.TraceMismatch), Is.True,
@@ -531,7 +483,6 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_ComplexProgramWithLoops_ShouldAnalyzeCorrectly()
     {
-        // Arrange
         var studentCode = """
                           for i in range(3):
                               move(5)
@@ -544,18 +495,15 @@ public class ComprehensiveVerificationTests
                                 turn(120)
                             """;
 
-        // After 3 moves of 5 at 120-degree turns, we get a triangle
-        // Final position is back near start (0, 0) with some floating point error
         var config = new TaskConfig
         {
             SceneWidth = 1000.0,
             SceneHeight = 1000.0,
-            TolerancePx = 1.0, // Larger tolerance due to floating point errors
+            TolerancePx = 1.0,
             MinTraceRatio = 0.7,
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -569,7 +517,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: back at start (0, 0) after triangle
         var expectedState = new SceneState(
             new CatState
             {
@@ -581,19 +528,15 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        // Get solution trace by executing reference code
         var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
         var solutionTrace = solutionExecution.Trace;
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
-        // With solution trace comparison, identical code (including loops) should be optimal
         Assert.That(result.IsOptimal, Is.True,
             "Identical code with loops should be optimal when compared to solution trace");
         Assert.That(result.Metrics["AstSimilarity"], Is.GreaterThanOrEqualTo(0.9));
@@ -602,14 +545,13 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_BlocklyGeneratedCode_ShouldWorkWithBlockIds()
     {
-        // Arrange - Simulate Blockly-generated Python code with BLOCK_ID comments
         var studentCode = """
                           # BLOCK_ID: move_block_1
-                          move(10)  # Move forward 10 pixels
+                          move(10)
                           # BLOCK_ID: turn_block_2
-                          turn(90)  # Turn right 90 degrees
+                          turn(90)
                           # BLOCK_ID: move_block_3
-                          move(5)   # Move forward 5 pixels
+                          move(5)
                           """;
 
         var referenceCode = """
@@ -627,7 +569,6 @@ public class ComprehensiveVerificationTests
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -641,7 +582,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: after move(10) right to (10, 0), turn right 90° to face down (180°), move(5) down to (10, 5)
         var expectedState = new SceneState(
             new CatState
             {
@@ -655,15 +595,12 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
-        // Get solution trace by executing reference code
         var solutionExecution = await _sandboxClient.ExecuteAsync(referenceCode, initialState, config);
         var solutionTrace = solutionExecution.Trace;
 
-        // Debug output
         Console.WriteLine($"DEBUG: execution.Success = {execution.Success}");
         Console.WriteLine($"DEBUG: execution.Error = {execution.Error}");
         Console.WriteLine($"DEBUG: initialState.Sprites.Count = {initialState.Sprites.Count}");
@@ -680,10 +617,8 @@ public class ComprehensiveVerificationTests
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             solutionTrace);
 
-        // Assert
         Assert.That(result.IsPassed, Is.True, "Should pass state check");
         Assert.That(result.IsOptimal, Is.True, "Should be optimal");
-        // Check that block IDs are preserved in AST elements
         Assert.That(studentProgram.Elements.Any(e => e.BlockId != null), Is.True,
             "Should have elements with BlockId from BLOCK_ID comments");
     }
@@ -691,9 +626,8 @@ public class ComprehensiveVerificationTests
     [Test]
     public async Task FullPipeline_StateMismatch_ShouldFailWithError()
     {
-        // Arrange
         var studentCode = """
-                          move(5)  # Only move 5 instead of 10
+                          move(5)
                           """;
 
         var referenceCode = """
@@ -709,7 +643,6 @@ public class ComprehensiveVerificationTests
             Level = CheckLevel.Normal
         };
 
-        // Initial state: cat at (0, 0) facing right (90 degrees)
         var initialState = new SceneState(
             new CatState
             {
@@ -721,7 +654,6 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Expected state: Expect cat at (10, 0)
         var expectedState = new SceneState(
             new CatState
             {
@@ -733,14 +665,12 @@ public class ComprehensiveVerificationTests
             }
         );
 
-        // Act
         var execution = await _sandboxClient.ExecuteAsync(studentCode, initialState, config);
         var studentProgram = await _analyzer.ExtractAsync(studentCode);
         var referenceProgram = await _analyzer.ExtractAsync(referenceCode);
         var result = _verificationEngine.Compare(studentProgram, referenceProgram, execution, expectedState, config,
             new ExecutionTrace());
 
-        // Assert
         Assert.That(result.IsPassed, Is.False, "Should fail state check");
         Assert.That(result.Metrics["StateScore"], Is.EqualTo(0.0));
         Assert.That(result.Issues.Any(i => i.Type == IssueType.StateMismatch && i.Severity == Severity.Error), Is.True,

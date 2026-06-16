@@ -31,9 +31,6 @@ public class TasksController : ControllerBase
         _lessonRepository = lessonRepository;
     }
 
-    /// <summary>
-    ///     Получить все задания (опционально фильтр по lessonId)
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskDto>>> GetAll([FromQuery] Guid? lessonId = null)
     {
@@ -49,7 +46,6 @@ public class TasksController : ControllerBase
         {
             tasks = await _taskRepository.GetByLessonIdAsync(lessonId.Value);
 
-            // Проверяем доступ к уроку (и его курсу)
             var lessonTasks = tasks.ToList();
             if (lessonTasks.Any())
             {
@@ -65,7 +61,6 @@ public class TasksController : ControllerBase
         {
             tasks = await _taskRepository.GetAllAsync();
 
-            // Фильтруем задания по доступу к курсам
             var filteredTasks = new List<EducationalTask>();
             foreach (var task in tasks)
             {
@@ -79,16 +74,12 @@ public class TasksController : ControllerBase
             tasks = filteredTasks;
         }
 
-        // Если пользователь студент, показываем только опубликованные задания
         if (role == "Student") tasks = tasks.Where(t => t.PipelineState == TaskPipelineState.Published);
 
         var dtos = tasks.Select(MapToDto);
         return Ok(dtos);
     }
 
-    /// <summary>
-    ///     Получить задание по ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<TaskDto>> GetById(Guid id)
     {
@@ -103,48 +94,40 @@ public class TasksController : ControllerBase
 
         var userIdGuid = Guid.Parse(userId);
 
-        // Проверяем доступ к курсу задания
         var course = await _courseRepository.GetByIdAsync(task.Lesson.CourseId);
         if (course == null) return NotFound("Course not found");
 
         var hasAccess = await CheckCourseAccessAsync(userIdGuid, role, course.Id);
         if (!hasAccess) return NotFound();
 
-        // Если пользователь студент и задание не опубликовано, возвращаем 404
         if (role == "Student" && task.PipelineState != TaskPipelineState.Published)
             return NotFound();
 
         return Ok(MapToDto(task));
     }
 
-    /// <summary>
-    ///     Создать черновик задания (минимальный)
-    /// </summary>
     [HttpPost("draft")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<TaskDto>> CreateDraft([FromBody] CreateTaskDraftRequest request)
     {
-        // Проверяем, что урок существует
         var lesson = await _lessonRepository.GetByIdAsync(request.LessonId!.Value);
         if (lesson == null)
             return NotFound($"Lesson with id {request.LessonId} not found");
 
-        // Проверяем уникальность порядка в рамках урока
         var existingTasks = await _taskRepository.GetByLessonIdAsync(request.LessonId.Value);
         if (existingTasks.Any(t => t.Order == request.Order))
             return BadRequest($"Task with order {request.Order} already exists in this lesson");
 
-        // Создаем задание с минимальными данными
         var task = new EducationalTask
         {
             Id = Guid.NewGuid(),
             LessonId = request.LessonId.Value,
             Order = request.Order,
-            Title = $"Задание {request.Order}", // Автогенерация названия
+            Title = $"Задание {request.Order}",
             Description = "",
             PipelineState = TaskPipelineState.Draft,
-            Config = new TaskConfig(), // Дефолтная конфигурация
-            InitialState = new SceneState() // Пустое начальное состояние
+            Config = new TaskConfig(),
+            InitialState = new SceneState()
         };
 
         await _taskRepository.CreateAsync(task);
@@ -152,9 +135,6 @@ public class TasksController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = task.Id }, dto);
     }
 
-    /// <summary>
-    ///     Протестировать решение (без сохранения в БД)
-    /// </summary>
     [HttpPost("{id}/test-solution")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<TestSolutionResponse>> TestSolution(
@@ -167,7 +147,6 @@ public class TasksController : ControllerBase
         if (task.PipelineState != TaskPipelineState.Draft)
             return BadRequest("Only draft tasks can be tested");
 
-        // Выполняем решение без сохранения в БД
         var executionResult = await _sandboxClient.ExecuteAsync(
             request.Code,
             SceneStateMapper.ToModel(request.InitialState),
@@ -181,9 +160,6 @@ public class TasksController : ControllerBase
     }
 
 
-    /// <summary>
-    ///     Опубликовать задание
-    /// </summary>
     [HttpPost("{id}/publish")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<TaskDto>> Publish(Guid id)
@@ -207,9 +183,6 @@ public class TasksController : ControllerBase
         return Ok(MapToDto(task));
     }
 
-    /// <summary>
-    ///     Вернуть задание в черновик для редактирования
-    /// </summary>
     [HttpPost("{id}/unpublish")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<TaskDto>> Unpublish(Guid id)
@@ -222,17 +195,11 @@ public class TasksController : ControllerBase
             return BadRequest("Only published tasks can be unpublished");
 
         task.PipelineState = TaskPipelineState.Draft;
-        // Keep solution data for reference, but teacher will need to run preview again
-        // before publishing
-
         await _taskRepository.UpdateAsync(task);
 
         return Ok(MapToDto(task));
     }
 
-    /// <summary>
-    ///     Обновить задание (черновики) с возможностью выполнения решения
-    /// </summary>
     [HttpPost("{id}")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskRequest request)
@@ -241,7 +208,6 @@ public class TasksController : ControllerBase
         if (task == null)
             return NotFound();
 
-        // Проверяем доступ к курсу задания
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
@@ -269,7 +235,6 @@ public class TasksController : ControllerBase
             var executionResult = await _sandboxClient.ExecuteAsync(
                 request.SolutionCode ?? task.SolutionCode ?? "", task.InitialState, task.Config);
 
-            // Debug output
             Console.WriteLine($"[DEBUG Update] Execution success: {executionResult.Success}");
             if (!executionResult.Success)
             {
@@ -296,9 +261,6 @@ public class TasksController : ControllerBase
         return Ok(MapToDto(task));
     }
 
-    /// <summary>
-    ///     Удалить задание
-    /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Delete(Guid id)

@@ -108,7 +108,6 @@ public class TasksControllerTests : TestBase
             var teacher = await GetTeacherAsync();
             SetBearerToken(teacher.Token);
 
-            // Сначала обновляем задание с решением (это выполнит решение и сохранит trace)
             var config = new TaskConfigDto
             {
                 SceneWidth = 1000.0,
@@ -146,7 +145,6 @@ public class TasksControllerTests : TestBase
                     $"Не удалось обновить задание с решением. Status: {updateResponse.StatusCode}. Error: {errorContent}");
             }
 
-            // Публикуем задание
             var publishResponse = await Client.PostAsync($"/api/tasks/{taskId}/publish", null);
 
             Assert.That(publishResponse.IsSuccessStatusCode, Is.True, "Не удалось опубликовать задание");
@@ -259,8 +257,7 @@ public class TasksControllerTests : TestBase
 
         var task = await response.Content.ReadFromJsonAsync<TaskDto>(JsonOptions);
         Assert.That(task, Is.Not.Null);
-        // После создания черновика Title может быть пустым
-        Assert.That(string.IsNullOrEmpty(task!.Title), Is.False); // Title is auto-generated as "Задание {order}"
+        Assert.That(string.IsNullOrEmpty(task!.Title), Is.False);
         Assert.That(task!.LessonId, Is.EqualTo(lessonId));
         Assert.That(task!.Order, Is.EqualTo(2));
     }
@@ -453,20 +450,17 @@ public class TasksControllerTests : TestBase
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
 
-        // Создаем группу для курса
         var groupRequest = new { courseId, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var group = await groupResponse.Content.ReadFromJsonAsync<GroupDto>();
         Assert.That(group, Is.Not.Null);
 
-        // Добавляем студента в группу
         var student = await GetStudentAsync();
         var addStudentResponse =
             await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-        // Обновляем задание с решением (новый workflow)
         var updateRequest = new UpdateTaskRequest(
             "Test Task",
             "Test Description",
@@ -482,21 +476,18 @@ public class TasksControllerTests : TestBase
                 Visible = true,
                 Costume = "default"
             }),
-            "move(5)" // Solution code
+            "move(5)"
         );
         var updateResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest, JsonOptions);
         Assert.That(updateResponse.IsSuccessStatusCode, Is.True, "Не удалось обновить задание с решением");
 
-        // Публикуем задание
         var publishResponse = await Client.PostAsync($"/api/tasks/{taskId}/publish", null);
         Assert.That(publishResponse.IsSuccessStatusCode, Is.True, "Не удалось опубликовать задание");
 
-        // Теперь студент должен видеть задание (он в группе курса)
         SetBearerToken(student.Token);
         var response = await Client.GetAsync($"/api/tasks?lessonId={lessonId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-        // Студент должен видеть опубликованное задание
         var tasks = await response.Content.ReadFromJsonAsync<List<TaskDto>>(JsonOptions);
         Assert.That(tasks, Is.Not.Null);
         Assert.That(tasks, Has.Count.EqualTo(1), "Студент должен видеть опубликованное задание");
@@ -523,18 +514,14 @@ public class TasksControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
-        // Test missing LessonId
         var invalidRequest1 = new
         {
             Order = 1
-            // Missing LessonId
         };
 
         var response1 = await Client.PostAsJsonAsync("/api/tasks/draft", invalidRequest1);
-        // Missing LessonId should return BadRequest (validation fails)
         Assert.That(response1.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest), "Should fail without LessonId");
 
-        // Test invalid Order (zero)
         var invalidRequest2 = new
         {
             LessonId = lessonId,
@@ -542,7 +529,6 @@ public class TasksControllerTests : TestBase
         };
 
         var response2 = await Client.PostAsJsonAsync("/api/tasks/draft", invalidRequest2);
-        // Order validation should return BadRequest
         Assert.That(response2.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest), "Should fail with Order <= 0");
     }
 
@@ -556,17 +542,14 @@ public class TasksControllerTests : TestBase
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
 
-        // Test invalid order (zero)
         var updateRequest = new UpdateTaskRequest(null, null, 0, null, null, null);
         var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
 
-        // Test negative order
         updateRequest = new UpdateTaskRequest(null, null, -5, null, null, null);
         response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
 
-        // Test valid order should succeed
         updateRequest = new UpdateTaskRequest(null, null, 10, null, null, null);
         response = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
@@ -581,13 +564,10 @@ public class TasksControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
-        // Create one unpublished task
         var unpublishedTaskId = await CreateTestTaskAsync(lessonId, "Unpublished Task");
 
-        // Create and publish another task
         var publishedTaskId = await CreateAndPublishTaskAsync(lessonId, "Published Task", 2);
 
-        // Teacher should see both tasks
         var response = await Client.GetAsync($"/api/tasks?lessonId={lessonId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -609,13 +589,10 @@ public class TasksControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
-        // Create one unpublished task
         var unpublishedTaskId = await CreateTestTaskAsync(lessonId, "Unpublished Task");
 
-        // Create and publish another task
         var publishedTaskId = await CreateAndPublishTaskAsync(lessonId, "Published Task", 2);
 
-        // Admin should see both tasks
         var response = await Client.GetAsync($"/api/tasks?lessonId={lessonId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -637,7 +614,6 @@ public class TasksControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
-        // Create a group for the course and add student
         var groupRequest = new { courseId, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
@@ -649,16 +625,12 @@ public class TasksControllerTests : TestBase
             await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-        // Create one unpublished task
         var unpublishedTaskId = await CreateTestTaskAsync(lessonId, "Unpublished Task");
 
-        // Create and publish another task
         var publishedTaskId = await CreateAndPublishTaskAsync(lessonId, "Published Task", 2);
 
-        // Switch to student (who is enrolled in the course)
         SetBearerToken(student.Token);
 
-        // Student should see only published task (and has access to the course)
         var response = await Client.GetAsync($"/api/tasks?lessonId={lessonId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -678,7 +650,6 @@ public class TasksControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
-        // Create a group for the course and add student
         var groupRequest = new { courseId, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
@@ -690,14 +661,10 @@ public class TasksControllerTests : TestBase
             await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-        // Create unpublished task
         var unpublishedTaskId = await CreateTestTaskAsync(lessonId, "Unpublished Task");
 
-        // Switch to student (who is enrolled in the course)
         SetBearerToken(student.Token);
 
-        // Student should get 404 when trying to access unpublished task by ID
-        // (student has course access but task is unpublished)
         var response = await Client.GetAsync($"/api/tasks/{unpublishedTaskId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
@@ -711,7 +678,6 @@ public class TasksControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
-        // Create a group for the course and add student
         var groupRequest = new { courseId, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
@@ -723,13 +689,10 @@ public class TasksControllerTests : TestBase
             await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-        // Create and publish task
         var publishedTaskId = await CreateAndPublishTaskAsync(lessonId);
 
-        // Switch to student (who is enrolled in the course)
         SetBearerToken(student.Token);
 
-        // Student should be able to access published task by ID (has access to the course)
         var response = await Client.GetAsync($"/api/tasks/{publishedTaskId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -748,7 +711,6 @@ public class TasksControllerTests : TestBase
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
 
-        // Create a group for the course and add student
         var groupRequest = new { courseId, name = "Test Group" };
         var groupResponse = await Client.PostAsJsonAsync("/api/groups", groupRequest);
         Assert.That(groupResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
@@ -760,21 +722,17 @@ public class TasksControllerTests : TestBase
             await Client.PostAsJsonAsync($"/api/groups/{group!.Id}/students", new { studentId = student.Id });
         Assert.That(addStudentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-        // Create multiple tasks with different states
         var unpublished1 = await CreateTestTaskAsync(lessonId, "Unpublished 1");
         var unpublished2 = await CreateTestTaskAsync(lessonId, "Unpublished 2", 2);
         var published1 = await CreateAndPublishTaskAsync(lessonId, "Published 1", 3);
         var published2 = await CreateAndPublishTaskAsync(lessonId, "Published 2", 4);
 
-        // Teacher should see all 4 tasks
         var teacherResponse = await Client.GetAsync($"/api/tasks?lessonId={lessonId}");
         var teacherTasks = await teacherResponse.Content.ReadFromJsonAsync<List<TaskDto>>(JsonOptions);
         Assert.That(teacherTasks, Has.Count.EqualTo(4), "Teacher should see all 4 tasks");
 
-        // Switch to student (who is enrolled in the course)
         SetBearerToken(student.Token);
 
-        // Student should see only 2 published tasks (and has access to the course)
         var studentResponse = await Client.GetAsync($"/api/tasks?lessonId={lessonId}");
         var studentTasks = await studentResponse.Content.ReadFromJsonAsync<List<TaskDto>>(JsonOptions);
         Assert.That(studentTasks, Has.Count.EqualTo(2), "Student should see only 2 published tasks");
@@ -796,12 +754,10 @@ public class TasksControllerTests : TestBase
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
 
-        // Initially task should be Draft
         var getResponse = await Client.GetAsync($"/api/tasks/{taskId}");
         var task = await getResponse.Content.ReadFromJsonAsync<TaskDto>(JsonOptions);
         Assert.That(task!.PipelineState, Is.EqualTo(TaskPipelineState.Draft));
 
-        // Update task with solution (new workflow)
         var updateRequest = new UpdateTaskRequest(
             "Test Task",
             "Test Description",
@@ -817,25 +773,21 @@ public class TasksControllerTests : TestBase
                 Visible = true,
                 Costume = "default"
             }),
-            "move(5)" // Solution code
+            "move(5)"
         );
         var updateResponse = await Client.PostAsJsonAsync($"/api/tasks/{taskId}", updateRequest);
         Assert.That(updateResponse.IsSuccessStatusCode, Is.True, "Failed to update task with solution");
 
-        // Publish the task
         var publishResponse = await Client.PostAsync($"/api/tasks/{taskId}/publish", null);
         Assert.That(publishResponse.IsSuccessStatusCode, Is.True);
 
-        // Task should now be Published
         getResponse = await Client.GetAsync($"/api/tasks/{taskId}");
         task = await getResponse.Content.ReadFromJsonAsync<TaskDto>(JsonOptions);
         Assert.That(task!.PipelineState, Is.EqualTo(TaskPipelineState.Published));
 
-        // Unpublish the task
         var unpublishResponse = await Client.PostAsync($"/api/tasks/{taskId}/unpublish", null);
         Assert.That(unpublishResponse.IsSuccessStatusCode, Is.True);
 
-        // Task should be Draft again
         getResponse = await Client.GetAsync($"/api/tasks/{taskId}");
         task = await getResponse.Content.ReadFromJsonAsync<TaskDto>(JsonOptions);
         Assert.That(task!.PipelineState, Is.EqualTo(TaskPipelineState.Draft));
@@ -844,18 +796,15 @@ public class TasksControllerTests : TestBase
     [Test]
     public async Task Teacher_CannotSeeTasks_FromOtherTeachersCourse()
     {
-        // Create first teacher and course
         var teacher1 = await GetTeacherAsync();
         SetBearerToken(teacher1.Token);
         var courseId1 = await CreateTestCourseAsync("Course by Teacher 1");
         var lessonId1 = await CreateTestLessonAsync(courseId1);
         var taskId1 = await CreateTestTaskAsync(lessonId1, "Task by Teacher 1");
 
-        // Create second teacher
         var teacher2 = await CreateAdditionalTeacherAsync("teacher2@test.com");
         SetBearerToken(teacher2.Token);
 
-        // Teacher 2 should not see tasks from Teacher 1's course
         var response = await Client.GetAsync("/api/tasks");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -867,18 +816,15 @@ public class TasksControllerTests : TestBase
     [Test]
     public async Task Teacher_CannotUpdateTask_FromOtherTeachersCourse()
     {
-        // Create first teacher and task
         var teacher1 = await GetTeacherAsync();
         SetBearerToken(teacher1.Token);
         var courseId1 = await CreateTestCourseAsync("Course by Teacher 1");
         var lessonId1 = await CreateTestLessonAsync(courseId1);
         var taskId1 = await CreateTestTaskAsync(lessonId1, "Task by Teacher 1");
 
-        // Create second teacher
         var teacher2 = await CreateAdditionalTeacherAsync("teacher2@test.com");
         SetBearerToken(teacher2.Token);
 
-        // Teacher 2 should not be able to update Teacher 1's task
         var updateRequest = new UpdateTaskRequest("Updated Title", "Updated description", 2, null, null, null);
         var response = await Client.PostAsJsonAsync($"/api/tasks/{taskId1}", updateRequest);
 
@@ -889,18 +835,15 @@ public class TasksControllerTests : TestBase
     [Test]
     public async Task Student_CannotSeeTasks_FromUnenrolledCourse()
     {
-        // Create teacher and course with task
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateAndPublishTaskAsync(lessonId);
 
-        // Switch to student (not enrolled in the course)
         var student = await GetStudentAsync();
         SetBearerToken(student.Token);
 
-        // Student should not see tasks from unenrolled course
         var response = await Client.GetAsync("/api/tasks");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -912,7 +855,6 @@ public class TasksControllerTests : TestBase
     [Test]
     public async Task Admin_CanSeeTasks_FromAnyCourse()
     {
-        // Create two teachers with their own courses
         var teacher1 = await GetTeacherAsync();
         SetBearerToken(teacher1.Token);
         var courseId1 = await CreateTestCourseAsync("Course 1");
@@ -925,11 +867,9 @@ public class TasksControllerTests : TestBase
         var lessonId2 = await CreateTestLessonAsync(courseId2);
         var taskId2 = await CreateTestTaskAsync(lessonId2, "Task 2");
 
-        // Switch to admin
         var admin = await GetAdminAsync();
         SetBearerToken(admin.Token);
 
-        // Admin should see tasks from both courses
         var response = await Client.GetAsync("/api/tasks");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -937,8 +877,6 @@ public class TasksControllerTests : TestBase
         Assert.That(tasks, Is.Not.Null);
         Assert.That(tasks, Has.Count.AtLeast(2), "Admin should see tasks from any course");
 
-        // Draft tasks don't have titles initially, so we check that we can see tasks from both courses
-        // by verifying we have at least 2 tasks
         var taskIds = tasks.Select(t => t.Id).ToList();
         Assert.That(taskIds, Contains.Item(taskId1));
         Assert.That(taskIds, Contains.Item(taskId2));
@@ -947,18 +885,15 @@ public class TasksControllerTests : TestBase
     [Test]
     public async Task GetTask_ReturnsNotFound_ForTaskInInaccessibleCourse()
     {
-        // Create teacher and task
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
 
-        // Switch to student (not enrolled)
         var student = await GetStudentAsync();
         SetBearerToken(student.Token);
 
-        // Student should get 404 for task in inaccessible course
         var response = await Client.GetAsync($"/api/tasks/{taskId}");
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
@@ -966,14 +901,12 @@ public class TasksControllerTests : TestBase
     [Test]
     public async Task TestSolution_WithJsonPayload_DeserializesCorrectly()
     {
-        // Create teacher and task
         var teacher = await GetTeacherAsync();
         SetBearerToken(teacher.Token);
         var courseId = await CreateTestCourseAsync();
         var lessonId = await CreateTestLessonAsync(courseId);
         var taskId = await CreateTestTaskAsync(lessonId);
 
-        // Create JSON payload with polymorphic sprites using new continuous coordinate fields
         var jsonPayload = @"{
             ""code"": ""move(10)"",
             ""initialState"": {
@@ -1014,14 +947,11 @@ public class TasksControllerTests : TestBase
             }
         }";
 
-        // Send raw JSON to test deserialization
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
         var response = await Client.PostAsync($"/api/tasks/{taskId}/test-solution", content);
 
-        // Output response for debugging
         var responseContent = await response.Content.ReadAsStringAsync();
 
-        // Check that request was processed (might return 400 if sandbox not available, but not 500 with deserialization error)
         Assert.That(response.StatusCode, Is.Not.EqualTo(HttpStatusCode.InternalServerError),
             $"Should not get internal server error due to deserialization. Response: {responseContent}");
 
@@ -1032,7 +962,6 @@ public class TasksControllerTests : TestBase
         }
         else
         {
-            // If not OK, check error message doesn't contain deserialization error
             Assert.That(responseContent,
                 Does.Not.Contain("Deserialization of types without a parameterless constructor"),
                 "Should not have deserialization error");

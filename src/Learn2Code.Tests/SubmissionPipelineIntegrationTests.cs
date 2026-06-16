@@ -45,7 +45,6 @@ public class SubmissionPipelineIntegrationTests
     [Test]
     public async Task CheckAsync_CompletePipeline_ReturnsCheckResult()
     {
-        // Arrange
         var taskId = Guid.NewGuid();
         var studentId = Guid.NewGuid().ToString();
         var submissionId = Guid.NewGuid();
@@ -73,7 +72,7 @@ public class SubmissionPipelineIntegrationTests
             ExpectedFinalState = new SceneState(
                 new CatState
                 {
-                    X = 100.0, // 2 * 50px
+                    X = 100.0,
                     Y = 0.0,
                     Width = 50.0,
                     Height = 50.0,
@@ -104,7 +103,7 @@ public class SubmissionPipelineIntegrationTests
             FinalState = new SceneState(
                 new CatState
                 {
-                    X = 100.0, // 2 * 50px
+                    X = 100.0,
                     Y = 0.0,
                     Width = 50.0,
                     Height = 50.0,
@@ -164,10 +163,8 @@ public class SubmissionPipelineIntegrationTests
             .Setup(r => r.SaveAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CheckResult>()))
             .Returns(Task.CompletedTask);
 
-        // Act
         var submission = await _submissionService.CheckAsync(taskId, submissionRequest);
 
-        // Assert
         Assert.That(submission, Is.Not.Null);
         Assert.That(submission.ResultJson, Is.Not.Null.Or.Empty);
 
@@ -177,7 +174,6 @@ public class SubmissionPipelineIntegrationTests
         Assert.That(result.IsOptimal, Is.True);
         Assert.That(result.Issues, Is.Empty);
 
-        // Verify all interactions
         _mockTaskRepository.Verify(r => r.GetByIdAsync(taskId), Times.Once);
         _mockSandboxClient.Verify(c => c.ExecuteAsync(
             It.Is<string>(code => code == submissionRequest.Code),
@@ -200,7 +196,6 @@ public class SubmissionPipelineIntegrationTests
     [Test]
     public async Task CheckAsync_WhenTaskNotFound_ThrowsKeyNotFoundException()
     {
-        // Arrange
         var taskId = Guid.NewGuid();
         var submissionRequest = new SubmissionRequest(
             Guid.NewGuid().ToString(),
@@ -212,7 +207,6 @@ public class SubmissionPipelineIntegrationTests
             .Setup(r => r.GetByIdAsync(taskId))
             .ReturnsAsync((EducationalTask?)null);
 
-        // Act & Assert
         Assert.ThrowsAsync<KeyNotFoundException>(async () =>
             await _submissionService.CheckAsync(taskId, submissionRequest));
     }
@@ -220,7 +214,6 @@ public class SubmissionPipelineIntegrationTests
     [Test]
     public async Task CheckAsync_WhenSandboxExecutionFails_ReturnsFailedResult()
     {
-        // Arrange
         var taskId = Guid.NewGuid();
         var task = new EducationalTask
         {
@@ -284,10 +277,8 @@ public class SubmissionPipelineIntegrationTests
                 It.IsAny<ExecutionTrace>()))
             .Returns(checkResult);
 
-        // Act
         var submission = await _submissionService.CheckAsync(taskId, submissionRequest);
 
-        // Assert
         Assert.That(submission.ResultJson, Is.Not.Null.Or.Empty);
         var result = JsonSerializer.Deserialize<CheckResult>(submission.ResultJson, JsonOptions.Default);
         Assert.That(result, Is.Not.Null);
@@ -299,7 +290,6 @@ public class SubmissionPipelineIntegrationTests
     [Test]
     public async Task CheckAsync_WithDefaultConfig_UsesDefaultConfig()
     {
-        // Arrange
         var taskId = Guid.NewGuid();
         var task = new EducationalTask
         {
@@ -312,7 +302,7 @@ public class SubmissionPipelineIntegrationTests
             InitialState = new SceneState(),
             ExpectedFinalState = new SceneState(),
             SolutionCode = "move(2)",
-            Config = new TaskConfig() // Default config
+            Config = new TaskConfig()
         };
 
         var submissionRequest = new SubmissionRequest(
@@ -341,22 +331,19 @@ public class SubmissionPipelineIntegrationTests
             .Setup(e => e.Analyzer)
             .Returns(new MockLanguageAnalyzer());
 
-        // The verification engine should receive the default TaskConfig
         _mockVerificationEngine
             .Setup(e => e.Compare(
                 It.IsAny<NormalizedProgram>(),
                 It.IsAny<NormalizedProgram>(),
                 It.IsAny<ExecutionResult>(),
                 It.IsAny<SceneState>(),
-                It.Is<TaskConfig>(c => c.Level == CheckLevel.Normal), // Default config
+                It.Is<TaskConfig>(c => c.Level == CheckLevel.Normal),
                 It.IsAny<ExecutionTrace>()))
             .Returns(new CheckResult(true, true, "OK", new List<CodeIssue>(), new Dictionary<string, double>(),
                 new SceneState()));
 
-        // Act
         await _submissionService.CheckAsync(taskId, submissionRequest);
 
-        // Assert
         _mockVerificationEngine.Verify(e => e.Compare(
             It.IsAny<NormalizedProgram>(),
             It.IsAny<NormalizedProgram>(),
@@ -369,7 +356,6 @@ public class SubmissionPipelineIntegrationTests
     [Test]
     public async Task CheckAsync_SavesSubmissionWithCorrectData()
     {
-        // Arrange
         var taskId = Guid.NewGuid();
         var studentId = Guid.NewGuid().ToString();
         var task = new EducationalTask
@@ -435,10 +421,8 @@ public class SubmissionPipelineIntegrationTests
             .Callback<Submission>(s => capturedSubmission = s)
             .Returns<Submission>(s => Task.FromResult(s));
 
-        // Act
         await _submissionService.CheckAsync(taskId, submissionRequest);
 
-        // Assert
         Assert.That(capturedSubmission, Is.Not.Null);
         Assert.That(capturedSubmission!.StudentId, Is.EqualTo(Guid.Parse(studentId)));
         Assert.That(capturedSubmission.TaskId, Is.EqualTo(taskId));
@@ -452,7 +436,6 @@ public class SubmissionPipelineIntegrationTests
     [Test]
     public async Task CheckAsync_WithNullBlocklyXml_SavesEmptyString()
     {
-        // Arrange
         var taskId = Guid.NewGuid();
         var task = new EducationalTask
         {
@@ -470,7 +453,7 @@ public class SubmissionPipelineIntegrationTests
 
         var submissionRequest = new SubmissionRequest(
             Guid.NewGuid().ToString(),
-            "move(2)" // Null BlocklyXml
+            "move(2)"
         );
 
         Submission? capturedSubmission = null;
@@ -508,14 +491,11 @@ public class SubmissionPipelineIntegrationTests
             .Callback<Submission>(s => capturedSubmission = s)
             .Returns<Submission>(s => Task.FromResult(s));
 
-        // Act
         await _submissionService.CheckAsync(taskId, submissionRequest);
 
-        // Assert
         Assert.That(capturedSubmission!.BlocklyXml, Is.EqualTo(string.Empty));
     }
 
-    // Helper class for mocking
     private class MockLanguageAnalyzer : ILanguageAnalyzer
     {
         public bool Supports(string languageId)

@@ -20,9 +20,6 @@ public class ProgressController : ControllerBase
         _taskRepo = taskRepo;
     }
 
-    /// <summary>
-    ///     Прогресс студента по всем заданиям (только свой прогресс или для преподавателей/админов)
-    /// </summary>
     [HttpGet("{studentId}")]
     public async Task<ActionResult<IEnumerable<ProgressDto>>> GetByStudent(Guid studentId)
     {
@@ -47,9 +44,6 @@ public class ProgressController : ControllerBase
         return Ok(dtos);
     }
 
-    /// <summary>
-    ///     Прогресс студента по конкретному заданию (только свой прогресс или для преподавателей/админов)
-    /// </summary>
     [HttpGet("{studentId}/tasks/{taskId}")]
     public async Task<ActionResult<ProgressDto>> GetByStudentAndTask(Guid studentId, Guid taskId)
     {
@@ -71,9 +65,6 @@ public class ProgressController : ControllerBase
         return Ok(dto);
     }
 
-    /// <summary>
-    ///     Проверяет, может ли текущий пользователь просматривать прогресс указанного студента
-    /// </summary>
     private bool CanViewProgress(Guid targetStudentId)
     {
         var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

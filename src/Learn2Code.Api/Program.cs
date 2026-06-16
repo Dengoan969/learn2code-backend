@@ -42,14 +42,12 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Use centralized JsonOptions from Core project
         var defaultOptions = JsonOptions.Default;
         options.JsonSerializerOptions.ReferenceHandler = defaultOptions.ReferenceHandler;
         options.JsonSerializerOptions.DefaultIgnoreCondition = defaultOptions.DefaultIgnoreCondition;
         options.JsonSerializerOptions.PropertyNamingPolicy = defaultOptions.PropertyNamingPolicy;
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = defaultOptions.PropertyNameCaseInsensitive;
 
-        // Copy converters
         options.JsonSerializerOptions.Converters.Clear();
         foreach (var converter in defaultOptions.Converters) options.JsonSerializerOptions.Converters.Add(converter);
     });
@@ -76,9 +74,7 @@ else
 var sandboxDir = builder.Configuration["Python:SandboxDir"] ?? "src/sandbox";
 if (!Path.IsPathRooted(sandboxDir))
 {
-    // exeDir = .../edu/src/Learn2Code.Api/bin/Debug/net8.0/
     var exeDir = AppContext.BaseDirectory;
-    // repoRoot = .../edu/
     var repoRoot = Path.GetFullPath(Path.Combine(exeDir, "..", "..", "..", "..", ".."));
     sandboxDir = Path.GetFullPath(Path.Combine(repoRoot, sandboxDir));
 }
@@ -95,7 +91,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API для образовательной платформы Learn2Code"
     });
 
-    // Добавляем поддержку JWT авторизации в Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
@@ -129,13 +124,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Learn2Code API V1");
-        c.RoutePrefix = "swagger"; // Доступ по адресу /swagger
-        c.DisplayRequestDuration(); // Показывать время выполнения запросов
-        c.DocExpansion(DocExpansion.List); // Развернутый вид по умолчанию
+        c.RoutePrefix = "swagger";
+        c.DisplayRequestDuration();
+        c.DocExpansion(DocExpansion.List);
     });
 }
 
-// Middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseCors();
@@ -145,7 +139,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Skip seed data during tests or when explicitly configured
 var skipSeed = builder.Configuration.GetValue<bool>("Database:SkipSeed") ||
                Environment.GetEnvironmentVariable("SKIP_SEED") == "true";
 

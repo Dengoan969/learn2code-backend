@@ -10,12 +10,10 @@ class SpriteType(Enum):
 @dataclass
 class SpriteState:
     type: SpriteType
-    # ЗАМЕНА: grid_x, grid_y → x, y (float)
-    x: float = 0.0          # Пиксели, центр спрайта
-    y: float = 0.0          # Пиксели, центр спрайта
-    # НОВОЕ: Размеры спрайта
-    width: float = 50.0     # Ширина в пикселях
-    height: float = 50.0    # Высота в пикселях
+    x: float = 0.0
+    y: float = 0.0
+    width: float = 50.0
+    height: float = 50.0
     visible: bool = True
 
 @dataclass
@@ -23,7 +21,7 @@ class CatState(SpriteState):
     direction: float = 90.0
     costume: str = "default"
     said_texts: Dict[str, int] = field(default_factory=dict)
-    collected_items: Dict[str, int] = field(default_factory=dict)  # ОСТАВИТЬ - сбор яблок
+    collected_items: Dict[str, int] = field(default_factory=dict)
     
     def __post_init__(self):
         self.type = SpriteType.CAT

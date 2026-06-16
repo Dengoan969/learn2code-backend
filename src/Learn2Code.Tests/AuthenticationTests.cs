@@ -11,7 +11,6 @@ public class AuthenticationTests : TestBase
     [Test]
     public async Task Admin_CanLogin_WithCorrectCredentials()
     {
-        // Ensure admin user exists before testing login
         await GetAdminAsync();
 
         var loginRequest = new LoginRequest("admin", "admin123");
@@ -30,7 +29,6 @@ public class AuthenticationTests : TestBase
     [Test]
     public async Task Login_Fails_WithWrongPassword()
     {
-        // Ensure admin user exists before testing wrong password
         await GetAdminAsync();
 
         var loginRequest = new LoginRequest("admin", "wrongpassword");

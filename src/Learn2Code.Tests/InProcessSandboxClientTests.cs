@@ -15,11 +15,9 @@ public class InProcessSandboxClientTests
     {
         _mockLogger = new Mock<ILogger<InProcessSandboxClient>>();
 
-        // Create temporary sandbox directory for tests
         _tempSandboxDir = Path.Combine(Path.GetTempPath(), $"sandbox_test_{Guid.NewGuid()}");
         Directory.CreateDirectory(_tempSandboxDir);
 
-        // Create minimal sandbox_runner.py for testing with new format
         var sandboxRunnerPath = Path.Combine(_tempSandboxDir, "sandbox_runner.py");
         File.WriteAllText(sandboxRunnerPath, """
                                              import sys
@@ -37,16 +35,14 @@ public class InProcessSandboxClientTests
                                                  initial_state = request.get("initialState", {})
                                                  config = request.get("config", {})
                                                  
-                                                 # Test simulation - return different responses based on code content
                                                  if "error" in code:
                                                      print(json.dumps({"success": False, "error": "Simulated error", "finalState": {}, "trace": []}))
                                                  elif "timeout" in code:
                                                      import time
-                                                     time.sleep(35)  # Sleep longer than 30-second timeout to trigger TimeoutException
+                                                     time.sleep(35)
                                                  elif "empty" in code:
                                                      print(json.dumps({"success": True, "finalState": {"sprites": []}, "trace": {"events": []}}))
                                                  else:
-                                                     # Normal response with new format (continuous coordinates)
                                                      result = {
                                                          "success": True,
                                                          "finalState": {
@@ -76,7 +72,6 @@ public class InProcessSandboxClientTests
                                                  main()
                                              """);
 
-        // Try to find Python executable
         _pythonPath = FindPythonPath();
         if (_pythonPath == null) Assert.Inconclusive("Python not found on system. Skipping sandbox tests.");
     }
@@ -90,7 +85,6 @@ public class InProcessSandboxClientTests
         }
         catch
         {
-            // Ignore cleanup errors
         }
     }
 
@@ -101,22 +95,18 @@ public class InProcessSandboxClientTests
     [Test]
     public async Task ExecuteAsync_WithValidCode_ReturnsSuccessPayload()
     {
-        // Arrange
         var client = new InProcessSandboxClient(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "move(10)";
         var initialState = new SceneState();
         var config = new TaskConfig();
 
-        // Act
         var result = await client.ExecuteAsync(code, initialState, config);
 
-        // Debug logging
         Console.WriteLine($"Result.Success: {result.Success}");
         Console.WriteLine($"Result.Error: {result.Error}");
         if (result.FinalState?.Sprites != null)
             Console.WriteLine($"Result.FinalState.Sprites.Count: {result.FinalState.Sprites.Count}");
 
-        // Assert
         Assert.That(result.Success, Is.True);
         Assert.That(result.Error, Is.Null);
         Assert.That(result.FinalState.Sprites, Has.Count.EqualTo(1));
@@ -132,16 +122,13 @@ public class InProcessSandboxClientTests
     [Test]
     public async Task ExecuteAsync_WithErrorInCode_ReturnsErrorPayload()
     {
-        // Arrange
         var client = new InProcessSandboxClient(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "error simulation";
         var initialState = new SceneState();
         var config = new TaskConfig();
 
-        // Act
         var result = await client.ExecuteAsync(code, initialState, config);
 
-        // Assert
         Assert.That(result.Success, Is.False);
         Assert.That(result.Error, Is.Not.Null.And.Not.Empty);
         Assert.That(result.FinalState.Sprites, Is.Empty);
@@ -151,13 +138,11 @@ public class InProcessSandboxClientTests
     [Test]
     public void ExecuteAsync_WithTimeout_ThrowsTimeoutException()
     {
-        // Arrange
         var client = new InProcessSandboxClient(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "timeout simulation";
         var initialState = new SceneState();
         var config = new TaskConfig();
 
-        // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(async () =>
             await client.ExecuteAsync(code, initialState, config));
     }
@@ -165,16 +150,13 @@ public class InProcessSandboxClientTests
     [Test]
     public async Task ExecuteAsync_WithEmptyCode_ReturnsEmptyState()
     {
-        // Arrange
         var client = new InProcessSandboxClient(_pythonPath, _tempSandboxDir, _mockLogger.Object);
         var code = "empty simulation";
         var initialState = new SceneState();
         var config = new TaskConfig();
 
-        // Act
         var result = await client.ExecuteAsync(code, initialState, config);
 
-        // Assert
         Assert.That(result.Success, Is.True);
         Assert.That(result.Error, Is.Null);
         Assert.That(result.FinalState.Sprites, Is.Empty);
@@ -184,8 +166,6 @@ public class InProcessSandboxClientTests
     [Test]
     public async Task ExecuteAsync_WithInvalidJsonResponse_ReturnsErrorResult()
     {
-        // Arrange
-        // Replace the sandbox_runner.py with one that outputs invalid JSON
         var runnerPath = Path.Combine(_tempSandboxDir, "sandbox_runner.py");
         File.WriteAllText(runnerPath, """
                                       print("not json at all")
@@ -196,10 +176,8 @@ public class InProcessSandboxClientTests
         var initialState = new SceneState();
         var config = new TaskConfig();
 
-        // Act
         var result = await client.ExecuteAsync(code, initialState, config);
 
-        // Assert
         Assert.That(result.Success, Is.False);
         Assert.That(result.Error, Does.Contain("Ошибка парсинга ответа"));
         Assert.That(result.FinalState.Sprites, Is.Empty);
@@ -209,13 +187,11 @@ public class InProcessSandboxClientTests
     [Test]
     public async Task ExecuteAsync_WithPythonNotFound_ThrowsInvalidOperationException()
     {
-        // Arrange
         var client = new InProcessSandboxClient("nonexistent_python.exe", _tempSandboxDir, _mockLogger.Object);
         var code = "any code";
         var initialState = new SceneState();
         var config = new TaskConfig();
 
-        // Act & Assert
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await client.ExecuteAsync(code, initialState, config));
     }
@@ -223,13 +199,11 @@ public class InProcessSandboxClientTests
     [Test]
     public async Task ExecuteAsync_WithSandboxDirNotFound_ThrowsInvalidOperationException()
     {
-        // Arrange
         var client = new InProcessSandboxClient(_pythonPath, "nonexistent_directory", _mockLogger.Object);
         var code = "any code";
         var initialState = new SceneState();
         var config = new TaskConfig();
 
-        // Act & Assert
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await client.ExecuteAsync(code, initialState, config));
     }
@@ -268,7 +242,6 @@ public class InProcessSandboxClientTests
             }
             catch
             {
-                // Continue to next path
             }
 
         return null;

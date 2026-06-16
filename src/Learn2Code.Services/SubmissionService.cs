@@ -31,29 +31,23 @@ public class SubmissionService
 
     public async Task<Submission> CheckAsync(Guid taskId, SubmissionRequest req)
     {
-        // 1. Загрузка задания
         var task = await _tasks.GetByIdAsync(taskId);
         if (task == null)
             throw new KeyNotFoundException($"Task with id {taskId} not found");
 
-        // 2. Исполнение в песочнице (используем типизированные свойства)
         var execResult = await _sandbox.ExecuteAsync(req.Code, task.InitialState, task.Config);
 
-        // 3. Нормализация AST
         var analyzer = _engine.Analyzer;
         var studentProgram = await analyzer.ExtractAsync(req.Code);
 
-        // Handle null solution code - create empty reference program
         var referenceProgram = task.SolutionCode != null
             ? await analyzer.ExtractAsync(task.SolutionCode)
             : new NormalizedProgram { Elements = new List<CodeElement>() };
 
-        // 4. Сравнение - provide default SceneState if null
         var expectedState = task.ExpectedFinalState ?? new SceneState();
         var verdict = _engine.Compare(studentProgram, referenceProgram, execResult, expectedState, task.Config,
             task.SolutionTrace);
 
-        // 5. Сохранение результата
         var submission = new Submission
         {
             Id = Guid.NewGuid(),
