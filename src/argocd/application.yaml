@@ -16,5 +16,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: learn2code
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - PruneLast=true

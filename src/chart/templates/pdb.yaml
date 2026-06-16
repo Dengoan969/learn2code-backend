@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "learn2code-api.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "learn2code-api.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "learn2code-api.selectorLabels" . | nindent 6 }}
